@@ -1,0 +1,32 @@
+# Copyright (C) 2025 devtouch!, UAB
+# https://www.devtouch.lt
+
+{
+    "name": "ASPA integration",
+    "version": "18.0.0.0.1",
+    "license": "Other proprietary",
+    "author": "UAB 'Devtouch!'",
+    "website": "https://www.devtouch.lt",
+    "contributors": [
+        "Mikas Gudzinevičius <mikas@devtouch.lt>",
+    ],
+    "category": "All Categories",
+    "depends": [
+        "point_of_sale"
+    ],
+    "data": [
+        "views/res_config_views.xml",
+        "views/product_views.xml",
+    ],
+    "assets": {
+        "point_of_sale._assets_pos": [
+            "aspa_integration/static/src/js/aspa_api.js",
+            "aspa_integration/static/src/js/payment_screen_extension.js",
+        ],
+    },
+    "installable": True,
+    "application": True,
+    "images": [
+        "static/description/icon.png",
+    ],
+}
