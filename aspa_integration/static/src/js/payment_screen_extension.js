@@ -12,10 +12,6 @@ patch(PaymentScreen.prototype, {
     setup() {
         super.setup();
         this.orm = useService("orm");
-//        onMounted(async () => {
-//            await this._openFiscalReceipt();
-//            await this._registerProducts();
-//        });
     },
 
     // open fiscal receipt
@@ -63,21 +59,15 @@ patch(PaymentScreen.prototype, {
     async _registerProducts() {
         const order = this.pos.get_order();
         if (order) {
-            console.log("Registering products...");
             const orderLines = order.lines.models || order.lines;
             for (const line of orderLines) {
-                console.log(line);
                 const product = line.product_id;
                 const quantity = line.qty
                 const taxLetter = product.is_deposit ? "N" : "A";
                 const vatAmount = line.price_unit * quantity * (line.tax_ids[0].amount / 100);
-                console.log("VAT amount:", vatAmount);
                 const unitPrice = (line.price_subtotal + vatAmount) / quantity;
-                console.log("Price subtotal:", line.price_subtotal);
-                console.log("Unit price:", unitPrice);
                 const formattedPrice = unitPrice.toFixed(3);
                 const parameter = `${product.display_name}\t${taxLetter}${quantity}*${formattedPrice}`;
-                console.log("Registering product parameter:", parameter);
                 try {
                     await aspaIntegration.sendCommand("49", parameter);
                 } catch (error) {
@@ -89,23 +79,44 @@ patch(PaymentScreen.prototype, {
 
     // finalize validation and register payment lines before closing the receipt
     async _finalizeValidation() {
-        console.log('Finalizing validation...', this.currentOrder);
         await this._openFiscalReceipt();
         await this._registerProducts();
         const paymentLines = this.currentOrder.payment_ids;
         let receiptNumber;
         const order = this.pos.get_order();
 
-        // register payments
+        // Check if there's a card payment and call BankasSale0 before fiscal receipt
+        let cardPaymentSuccess = true;
+        for (const line of paymentLines) {
+            const paymentType = this._getPaymentType(line.payment_method_id.name);
+            if (paymentType === 'C') {
+                try {
+                    const bankasResponse = await aspaIntegration.sendBankas0({ amount: line.amount.toFixed(2) });
+                    console.log("BankasSale0 response:", bankasResponse);
+                    if (!bankasResponse || !bankasResponse.BankasSale0Result.startsWith("OK")) {
+                        console.error("Bank card payment failed:", bankasResponse);
+                        cardPaymentSuccess = false;
+                        break;
+                    }
+                } catch (error) {
+                    console.error("Error processing BankasSale0:", error);
+                    cardPaymentSuccess = false;
+                    break;
+                }
+            }
+        }
+
+        if (!cardPaymentSuccess) {
+            throw new Error("Bank card payment unsuccessful. Transaction aborted.");
+        }
+
+        // Register payments
         if (paymentLines && paymentLines.length > 0) {
             for (const line of paymentLines) {
                 if (line.amount) {
-                    console.log("Registering payment line:", line);
                     const paymentType = this._getPaymentType(line.payment_method_id.name);
-                    console.log("Payment type:", paymentType);
                     let paymentText = `\t${paymentType}${line.amount}`;
-                    console.log("Payment text:", paymentText);
-                    if (line.amount == order.get_total_with_tax().toFixed(2)) {
+                    if (line.amount == order.get_total_with_tax().toFixed(2) && paymentType === 'P') {
                         paymentText = "";
                     }
                     try {
@@ -143,10 +154,16 @@ patch(PaymentScreen.prototype, {
                 return 'P';
             case 'Card':
                 return 'C';
+            case 'Kortelė':
+                return 'C';
+            case 'Kortele':
+                return 'C';
             case 'Credit':
                 return 'N';
             case 'Check':
                 return 'D';
+            case 'Wolt':
+                return 'N';
             default:
                 return 'P';
         }

@@ -22,6 +22,9 @@
         "point_of_sale._assets_pos": [
             "aspa_integration/static/src/js/aspa_api.js",
             "aspa_integration/static/src/js/payment_screen_extension.js",
+            "aspa_integration/static/src/js/cash_move_popup.js",
+            "aspa_integration/static/src/js/pos_store.js",
+            "aspa_integration/static/src/xml/navbar.xml",
         ],
     },
     "installable": True,

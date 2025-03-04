@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="aspa_integration.Navbar" t-inherit="point_of_sale.Navbar" t-inherit-mode="extension">
+        <xpath expr="//DropdownItem[contains(text(), 'Debug')]" position="after">
+            <DropdownItem onSelected="() => this.pos.printXreport()">
+                X report
+            </DropdownItem>
+            <DropdownItem onSelected="() => this.pos.printZreport()">
+                Z report
+            </DropdownItem>
+        </xpath>
+    </t>
+</templates>
