@@ -1,0 +1,13 @@
+<odoo>
+    <record id="paperformat_lot_label_32x57" model="report.paperformat">
+        <field name="name">Lot Label 32x57mm</field>
+        <field name="default">False</field>
+        <field name="format">custom</field>
+        <field name="page_height">57</field>
+        <field name="page_width">32</field>
+        <field name="margin_top">3</field>
+        <field name="margin_bottom">3</field>
+        <field name="margin_left">3</field>
+        <field name="margin_right">3</field>
+    </record>
+</odoo>
