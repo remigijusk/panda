@@ -19,7 +19,7 @@ class ASPAController(http.Controller):
         if not cmd:
             return {"success": False, "message": "Missing required parameters: cmd"}
 
-        base_url = request.env.user.company_id.aspa_api_url + '/Cmdline' or 'http://127.0.0.1:8111/json/fp550/Cmdline'
+        base_url = request.env.user.company_id.aspa_api_url + '/json/fp550/Cmdline' or 'http://127.0.0.1:8111/json/fp550/Cmdline'
 
         payload = {"cmd": cmd, "parameter": parameter}
 
@@ -41,7 +41,7 @@ class ASPAController(http.Controller):
         if not amount:
             return {"success": False, "message": "Missing amount parameter"}
 
-        base_url = request.env.user.company_id.aspa_api_url + '/BankasSale0' or 'http://127.0.0.1:8111/json/fp550/BankasSale0'
+        base_url = request.env.user.company_id.aspa_api_url + '/json/fp550/BankasSale0' or 'http://127.0.0.1:8111/json/fp550/BankasSale0'
         payload = {"amount": str(amount)}
 
         try:
