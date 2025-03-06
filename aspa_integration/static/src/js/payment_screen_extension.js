@@ -6,7 +6,7 @@ import ASPAIntegration from "./aspa_api";
 import { onMounted } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 
-const aspaIntegration = new ASPAIntegration();
+const aspa = new ASPAIntegration();
 
 patch(PaymentScreen.prototype, {
     setup() {
@@ -46,9 +46,9 @@ patch(PaymentScreen.prototype, {
                 }
 
                 const returnCommand = `G,${tillNumber},${receiptNumber}`;
-                await aspaIntegration.sendCommand("48", returnCommand);
+                await aspa.sendCommand("48", returnCommand);
             } else {
-                await aspaIntegration.sendCommand("48", "");
+                await aspa.sendCommand("48", "");
             }
         } catch (error) {
             throw error;
@@ -64,12 +64,12 @@ patch(PaymentScreen.prototype, {
                 const product = line.product_id;
                 const quantity = line.qty
                 const taxLetter = product.is_deposit ? "N" : "A";
-                const vatAmount = line.price_unit * quantity * (line.tax_ids[0].amount / 100);
-                const unitPrice = (line.price_subtotal + vatAmount) / quantity;
-                const formattedPrice = unitPrice.toFixed(3);
+                console.log(line);
+                console.log(line.get_unit_display_price());
+                const formattedPrice = line.get_unit_display_price().toFixed(2);
                 const parameter = `${product.display_name}\t${taxLetter}${quantity}*${formattedPrice}`;
                 try {
-                    await aspaIntegration.sendCommand("49", parameter);
+                    await aspa.sendCommand("49", parameter);
                 } catch (error) {
                     console.error(`Error registering product "${product.display_name}":`, error);
                 }
@@ -91,7 +91,7 @@ patch(PaymentScreen.prototype, {
             const paymentType = this._getPaymentType(line.payment_method_id.name);
             if (paymentType === 'C') {
                 try {
-                    const bankasResponse = await aspaIntegration.sendBankas0({ amount: line.amount.toFixed(2) });
+                    const bankasResponse = await aspa.sendBankas0({ amount: line.amount.toFixed(2) });
                     console.log("BankasSale0 response:", bankasResponse);
                     if (!bankasResponse || !bankasResponse.BankasSale0Result.startsWith("OK")) {
                         console.error("Bank card payment failed:", bankasResponse);
@@ -107,6 +107,7 @@ patch(PaymentScreen.prototype, {
         }
 
         if (!cardPaymentSuccess) {
+            await aspa.sendCommand("57", "");
             throw new Error("Bank card payment unsuccessful. Transaction aborted.");
         }
 
@@ -120,7 +121,7 @@ patch(PaymentScreen.prototype, {
                         paymentText = "";
                     }
                     try {
-                        await aspaIntegration.sendCommand("53", paymentText);
+                        await aspa.sendCommand("53", paymentText);
                     } catch (error) {
                         console.error("Error registering payment line:", error);
                         throw error;
@@ -131,9 +132,10 @@ patch(PaymentScreen.prototype, {
 
         // Finalize fiscal receipt
         try {
-            const response = await aspaIntegration.sendCommand("56", "");
+            const response = await aspa.sendCommand("56", "");
             receiptNumber = response.CmdlineResult.split(",")[1];
         } catch (error) {
+            await aspa.sendCommand("57", "");
             console.error("Error finalizing fiscal receipt:", error);
             throw error;
         }

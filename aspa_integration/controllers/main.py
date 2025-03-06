@@ -20,7 +20,6 @@ class ASPAController(http.Controller):
             return {"success": False, "message": "Missing required parameters: cmd"}
 
         base_url = request.env.user.company_id.aspa_api_url + '/json/fp550/Cmdline' or 'http://127.0.0.1:8111/json/fp550/Cmdline'
-
         payload = {"cmd": cmd, "parameter": parameter}
 
         try:
