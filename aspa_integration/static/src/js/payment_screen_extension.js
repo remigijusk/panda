@@ -55,19 +55,19 @@ patch(PaymentScreen.prototype, {
         }
     },
 
-    // register products
+    // Register products
     async _registerProducts() {
         const order = this.pos.get_order();
         if (order) {
-            const orderLines = order.lines.models || order.lines;
+            const orderLines = order.lines;
             for (const line of orderLines) {
                 const product = line.product_id;
                 const quantity = line.qty
                 const taxLetter = product.is_deposit ? "N" : "A";
-                console.log(line);
-                console.log(line.get_unit_display_price());
-                const formattedPrice = line.get_unit_display_price().toFixed(2);
-                const parameter = `${product.display_name}\t${taxLetter}${quantity}*${formattedPrice}`;
+                const priceSubtotal = line.get_price_without_tax();
+                const taxAmount = line.tax_ids[0].amount;
+                const price = (priceSubtotal / quantity) * (1 + taxAmount / 100);
+                const parameter = `${product.display_name}\t${taxLetter}${quantity}*${price.toFixed(4)}`;
                 try {
                     await aspa.sendCommand("49", parameter);
                 } catch (error) {
@@ -134,6 +134,7 @@ patch(PaymentScreen.prototype, {
         try {
             const response = await aspa.sendCommand("56", "");
             receiptNumber = response.CmdlineResult.split(",")[1];
+            console.log("Fiscal receipt number:", receiptNumber);
         } catch (error) {
             await aspa.sendCommand("57", "");
             console.error("Error finalizing fiscal receipt:", error);
@@ -141,9 +142,11 @@ patch(PaymentScreen.prototype, {
         }
 
         const finalized = await super._finalizeValidation();
-        if (order && order.server_id) {
+        console.log("Order", order.raw.id);
+        console.log("Order server ID", order.server_id);
+        if (order && order.raw.id) {
             await this.orm.call("pos.order", "update_pos_reference", [
-                [order.server_id],
+                [order.raw.id],
                 `Aspa Receipt:${receiptNumber}`,
             ]);
         }
@@ -153,6 +156,8 @@ patch(PaymentScreen.prototype, {
     _getPaymentType(paymentMethod) {
         switch (paymentMethod) {
             case 'Cash':
+                return 'P';
+            case 'Grynieji':
                 return 'P';
             case 'Card':
                 return 'C';
