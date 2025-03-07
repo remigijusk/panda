@@ -3,40 +3,60 @@
 
     <template id="report_lot_label_32x57">
         <t t-call="web.basic_layout">
-            <t t-foreach="docs" t-as="doc">
-                <div class="o_label_sheet" t-att-style="'width: 53mm; height: 26mm; padding: 0mm; display: flex; align-items: center; justify-content: center;'">
-                       <div t-att-style="'position:relative; width: 53mm; height: 26mm; border: 1px solid ' + (doc.env.user.company_id.primary_color or 'black') + '; padding: 2mm; display: flex; border-radius: 3px;'">
+            <t t-foreach="docs" t-as="o">
+                <div style="position: relative; width: 51mm; height: 26mm; margin: 0; padding: 0;">
+                    <div t-att-style="'width: 51mm; height: 26mm; border: 1px solid %s;' % (o.env.user.company_id.primary_color or 'black')">
+                        <t t-set="final_barcode" t-value="''"/>
+                        <t t-if="env.user.has_group('stock.group_stock_lot_print_gs1')">
+                            <t t-if="o.product_id.barcode" t-set="final_barcode" t-value="'01' + '0' * (14 - len(o.product_id.barcode)) + o.product_id.barcode"/>
+                            <t t-if="o.use_expiration_date">
+                                <t t-if="o.use_date" t-set="final_barcode" t-value="(final_barcode or '') + '15' + o.use_date.strftime('%y%m%d')"/>
+                                <t t-if="o.expiration_date" t-set="final_barcode" t-value="(final_barcode or '') + '17' + o.expiration_date.strftime('%y%m%d')"/>
+                            </t>
+                            <t name="gs1_datamatrix_lot" t-if="o.product_id.tracking == 'lot'" t-set="final_barcode" t-value="(final_barcode or '') + '10' + o.name"/>
+                            <t t-elif="o.product_id.tracking == 'serial'" t-set="final_barcode" t-value="(final_barcode or '') + '21' + o.name"/>
+                        </t>
 
-                        <div style="width: 65%; text-align: left; padding-right: 2mm;">
-                            <div t-field="doc.product_id.name" style="font-size: 10px; font-weight: bold; margin-bottom: 1mm;">Pjaustyti arbūzai</div>
-                                <div class="o_label_4x12" t-if="doc.product_id.default_code" t-att-style="'width:22mm' if final_barcode else ''">[<t t-out="doc.product_id.default_code"/>]</div>
-                                <div class="o_label_4x12" t-field="doc.product_id.name" t-att-style="'width:22mm' if final_barcode else ''">Demo Product</div>
-                                <div class="o_label_4x12" name="lot_name" t-field="doc.name" t-att-style="'width:22mm' if final_barcode else ''">Demo Lot/SN</div>
-<!--                            <div style="font-size: 12px; margin-bottom: 1mm;">S/N <span t-field="doc.name">0000003</span></div>-->
-
-<!--                            <div style="font-size: 8px;">Sudėtis: Šviežiai pjaustyti arbūzai</div>-->
-<!--                            <div style="font-size: 8px;">Svoris brutto <span t-field="doc.product_id.weight">0.3</span> kg</div>-->
-<!--                            <div style="font-size: 8px;">Pr. d. <t t-esc="context_timestamp(datetime.datetime.now()).strftime('%m/%d/%Y')">02/28/2025</t></div>-->
-<!--                            <div style="font-size: 8px;">Ex. d. <t t-esc="(context_timestamp(datetime.datetime.now()) + datetime.timedelta(days=1)).strftime('%m/%d/%Y')">03/01/2025</t></div>-->
-                        </div>
-
-                        <div style="width: 34%; display: flex; align-items: center; justify-content: center;">
-                            <t t-set="final_barcode" t-value="''"/>
-                            <t t-if="env.user.has_group('stock.group_stock_lot_print_gs1')">
-                                <t t-if="doc.product_id.valid_ean" t-set="final_barcode" t-value="'01' + '0' * (14 - len(doc.product_id.barcode)) + doc.product_id.barcode"/>
-                                <t name="gs1_datamatrix_lot" t-if="doc.product_id.tracking == 'lot'" t-set="final_barcode" t-value="(final_barcode or '') + '10' + doc.name"/>
-                                <t t-elif="doc.product_id.tracking == 'serial'" t-set="final_barcode" t-value="(final_barcode or '') + '21' + doc.name"/>
-
-                                <div t-if="final_barcode">
-                                    <span t-out="final_barcode" t-options="{'widget': 'barcode', 'symbology': 'ECC200DataMatrix', 'img_style': 'width:18mm; height:18mm'}">12345678901</span>
+                        <div style="padding: 1mm; position: relative; height: 24mm;">
+                            <div style="width: 25mm; float: left; padding-top: 2mm;">
+                                <div class="o_label_4x12" t-if="o.product_id.default_code" style="font-size: 10px;">[<t t-out="o.product_id.default_code"/>]</div>
+                                <div class="o_label_4x12" t-field="o.product_id.name" style="font-size: 10px; font-weight: bold;">Demo Product</div>
+                                <div class="o_label_4x12" t-if="o.name" style="font-size: 10px; font-weight: bold;">
+                                    S/N  <t t-out="o.name" />
                                 </div>
-                            </t>
-                            <t t-else="">
-                                <span t-field="doc.name" t-options="{'widget': 'barcode', 'symbology': 'ECC200DataMatrix', 'img_style': 'width:18mm; height:18mm'}">Demo Lot/SN</span>
-                            </t>
+
+                                <div class="o_label_4x12" t-field="o.product_id.public_description" style="font-size: 6px;"/>
+                                <div class="o_label_4x12" t-if="o.product_id.weight" style="font-size: 6px; ">
+                                    Svoris brutto:  <t t-out="o.product_id.weight" /> <t t-out="o.product_id.weight_uom_name" />
+                                </div>
+                                <t t-if="o.use_expiration_date">
+                                    <div class="o_label_4x12" t-if="o.use_date"  style="font-size: 6px;">
+                                        Pr. d. <t t-out="o.use_date" t-options="{'widget': 'date'}"/>
+                                    </div>
+                                    <div class="o_label_4x12" t-if="o.expiration_date"  style="font-size: 6px;">
+                                        Ex. d. <t t-out="o.expiration_date" t-options="{'widget': 'date'}"/>
+                                    </div>
+                                </t>
+                            </div>
+
+                            <div style="position: absolute; right: 2mm; top: 2mm;">
+                                <t t-if="env.user.has_group('stock.group_stock_lot_print_gs1')">
+                                    <div t-if="final_barcode">
+                                        <span t-out="final_barcode" t-options="{'widget': 'barcode', 'symbology': 'ECC200DataMatrix', 'img_style': 'width:20mm; height:20mm'}">12345678901</span>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div>
+                                        <span t-field="o.name" t-options="{'widget': 'barcode', 'img_style': 'width:20mm; height:20mm'}">Demo Lot/SN</span>
+                                    </div>
+                                </t>
+                            </div>
                         </div>
                     </div>
                 </div>
+                <t t-if="len(docs)">
+                    <div style="page-break-after: always;"/>
+                </t>
             </t>
         </t>
     </template>
