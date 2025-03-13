@@ -47,14 +47,21 @@ patch(PaymentScreen.prototype, {
                     throw new Error("Missing previous receipt number for return.");
                 }
 
-                const tillNumber = "1";
-                const receiptNumber = posReference.split("Aspa Receipt:")[1]?.trim();
-                if (!receiptNumber) {
-                    console.error("Previous receipt number is missing for return order.");
-                    throw new Error("Missing previous receipt number for return.");
+                let receiptNumber = "";
+                if (posReference && posReference.includes("Aspa Receipt:")) {
+                    receiptNumber = posReference.split("Aspa Receipt:")[1]?.trim();
                 }
 
-                const returnCommand = `G,${tillNumber}-${receiptNumber};`;
+                if (!receiptNumber) {
+                    console.warn("ASPA Receipt reference not found, using raw POS reference.");
+                    receiptNumber = posReference?.trim() || "";
+                    if (receiptNumber) {
+                        receiptNumber = receiptNumber.replace(/[^0-9]/g, '');
+                        console.log("receiptNumber:", receiptNumber);
+                    }
+                }
+
+                const returnCommand = `G,${receiptNumber};`;
                 await aspa.sendCommand("48", returnCommand);
             } else {
                 await aspa.sendCommand("48", "");
@@ -76,10 +83,10 @@ patch(PaymentScreen.prototype, {
 
                 console.log(line);
                 const product = line.product_id;
-                const quantity = line.qty;
+                let quantity = line.qty;
                 if (quantity < 0) {
                     quantity = Math.abs(quantity);
-}
+                }
                 const taxLetter = product.is_deposit ? "N" : "A";
                 let price = line.getUnitDisplayPriceBeforeDiscount();
                 const discount = line.discount > 0 ? `,-${line.discount}` : "";
@@ -130,7 +137,6 @@ patch(PaymentScreen.prototype, {
 
         // register single payment line
         if (paymentLines && paymentLines.length == 1) {
-            console.log('THERE IS ONE PAYMENT LINE');
             const line = paymentLines[0];
             const paymentType = this._getPaymentType(line.payment_method_id.name);
             let paymentText = `\t${paymentType}${(Math.floor(fullAmount * 100) / 100).toFixed(2)}`;

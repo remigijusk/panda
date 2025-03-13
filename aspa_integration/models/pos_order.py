@@ -6,6 +6,8 @@ class PosOrder(models.Model):
 
     @api.model
     def update_pos_reference(self, order_id, aspa_receipt_number):
+        if not isinstance(order_id[0], int):
+            return
         order = self.browse(order_id)
         if order:
             order.write({
