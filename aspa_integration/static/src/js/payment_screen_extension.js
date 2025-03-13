@@ -76,7 +76,10 @@ patch(PaymentScreen.prototype, {
 
                 console.log(line);
                 const product = line.product_id;
-                const quantity = line.qty * -1;
+                const quantity = line.qty;
+                if (quantity < 0) {
+                    quantity = Math.abs(quantity);
+}
                 const taxLetter = product.is_deposit ? "N" : "A";
                 let price = line.getUnitDisplayPriceBeforeDiscount();
                 const discount = line.discount > 0 ? `,-${line.discount}` : "";
