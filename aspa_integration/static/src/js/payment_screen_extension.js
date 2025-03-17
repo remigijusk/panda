@@ -88,9 +88,14 @@ patch(PaymentScreen.prototype, {
                     quantity = Math.abs(quantity);
                 }
                 const taxLetter = product.is_deposit ? "N" : "A";
-                let price = line.getUnitDisplayPriceBeforeDiscount();
+                console.log("unit price:", line.get_unit_price());
+                const unitPrice = line.get_price_with_tax_before_discount() / quantity;
+                console.log('line price subtotal:', line.price_subtotal);
+                console.log('unit price:', unitPrice);
+                const formattedPrice = unitPrice.toFixed(4);
+                console.log('formatted price:', formattedPrice);
                 const discount = line.discount > 0 ? `,-${line.discount}` : "";
-                const parameter = `${product.display_name}\t${taxLetter}${price.toFixed(2)}*${quantity}${discount}`;
+                const parameter = `${product.display_name}\t${taxLetter}${formattedPrice}*${quantity}${discount}`;
 
                 try {
                     await aspa.sendCommand("49", parameter);
