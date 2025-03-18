@@ -92,7 +92,11 @@ patch(PaymentScreen.prototype, {
                 const unitPrice = line.get_price_with_tax_before_discount() / quantity;
                 console.log('line price subtotal:', line.price_subtotal);
                 console.log('unit price:', unitPrice);
-                const formattedPrice = unitPrice.toFixed(4);
+                console.log('quantity:', quantity);
+                let formattedPrice = unitPrice.toFixed(4);
+                if (order._isRefundOrder()) {
+                    formattedPrice = Math.abs(formattedPrice);
+                }
                 console.log('formatted price:', formattedPrice);
                 const discount = line.discount > 0 ? `,-${line.discount}` : "";
                 const parameter = `${product.display_name}\t${taxLetter}${formattedPrice}*${quantity}${discount}`;
@@ -133,6 +137,9 @@ patch(PaymentScreen.prototype, {
             const subtotalResponse = await aspa.sendCommand("51", parameterText);
             console.log("subtotalResponse:", subtotalResponse);
             fullAmount = parseFloat(subtotalResponse.CmdlineResult.split(",")[1]) / 100;
+            if (order._isRefundOrder()) {
+                fullAmount = Math.abs(fullAmount);
+            }
             console.log("fullAmount:", fullAmount);
 
         } catch (error) {
@@ -144,9 +151,14 @@ patch(PaymentScreen.prototype, {
         if (paymentLines && paymentLines.length == 1) {
             const line = paymentLines[0];
             const paymentType = this._getPaymentType(line.payment_method_id.name);
-            let paymentText = `\t${paymentType}${(Math.floor(fullAmount * 100) / 100).toFixed(2)}`;
-            const roundedFullAmount = (Math.round(fullAmount * 20) / 20).toFixed(2);
+            let roundedFullAmount = (Math.round(fullAmount * 20) / 20).toFixed(2);
+
+            if (order._isRefundOrder()) {
+                roundedFullAmount = roundedFullAmount * -1;
+            }
+
             const paymentAmount = line.amount;
+            let paymentText = "";
 
             if (paymentType === 'C') {
                 try {
@@ -161,8 +173,19 @@ patch(PaymentScreen.prototype, {
                 }
             }
 
-            if (paymentAmount == roundedFullAmount && paymentType === 'P') {
-                paymentText = "";
+            console.log('Payment Amount:', paymentAmount);
+            console.log('Rounded Full Amount:', roundedFullAmount);
+
+            if (paymentAmount == roundedFullAmount && paymentType === 'P' && !order._isRefundOrder()) {
+                paymentText = ``;
+            }
+            else if (paymentAmount > roundedFullAmount && paymentType === 'P') {
+                paymentText = `\t${paymentType}${paymentAmount}`;
+                console.log('Payment Text:', paymentText);
+            }
+            else {
+                paymentText = `\t${paymentType}${roundedFullAmount}`;
+                console.log('Payment Text2:', paymentText);
             }
 
             try {
