@@ -178,14 +178,14 @@ patch(PaymentScreen.prototype, {
 
             if (paymentAmount == roundedFullAmount && paymentType === 'P' && !order._isRefundOrder()) {
                 paymentText = ``;
-            }
-            else if (paymentAmount > roundedFullAmount && paymentType === 'P') {
+            } else if (paymentAmount > roundedFullAmount && paymentType === 'P') {
                 paymentText = `\t${paymentType}${paymentAmount}`;
-                console.log('Payment Text:', paymentText);
-            }
-            else {
+            } else if (paymentType === 'P' && order._isRefundOrder()) {
                 paymentText = `\t${paymentType}${roundedFullAmount}`;
-                console.log('Payment Text2:', paymentText);
+            } else if (paymentType === 'C') {
+                paymentText = `\t${paymentType}${fullAmount}`;
+            } else {
+                paymentText = `\t${paymentType}${paymentAmount}`;
             }
 
             try {
@@ -224,22 +224,33 @@ patch(PaymentScreen.prototype, {
     // process mixed payments
     async _processMixedPayments(paymentLines, fullAmount) {
         let remainingAmount = Math.floor(fullAmount * 100) / 100;
+        let remainingAmountResponse = {};
+        let remainingAmountAspa = 0;
+
         for (const line of paymentLines) {
             const paymentType = this._getPaymentType(line.payment_method_id.name);
+
             if (paymentType === 'P') {
                 let cashPaymentText = `\t${paymentType}${line.amount.toFixed(2)}`;
                 remainingAmount -= line.amount;
                 try {
-                    await aspa.sendCommand("53", cashPaymentText);
+                    remainingAmountResponse = await aspa.sendCommand("53", cashPaymentText);
+                    console.log("remainingAmountResponse:", remainingAmountResponse);
                 } catch (error) {
                     console.error("Error registering cash payment line:", error);
                     throw error;
                 }
+            }
 
-            } else if (paymentType === 'C') {
+            if (paymentType === 'C') {
+                if (remainingAmountResponse.CmdlineResult) {
+                    remainingAmountAspa = parseFloat(remainingAmountResponse.CmdlineResult.split("D+")[1]) / 100;
+                    console.log(remainingAmountAspa);
+                }
+
                 let cardPaymentText = `\t${paymentType}${remainingAmount.toFixed(2)}`;
                 try {
-                    await aspa.sendBankas0({ amount: remainingAmount });
+                    await aspa.sendBankas0({ amount: remainingAmount.toFixed(2)});
                     await aspa.sendCommand("53", cardPaymentText);
                 } catch (error) {
                     console.error("Error registering card payment line:", error);
@@ -249,6 +260,7 @@ patch(PaymentScreen.prototype, {
             }
         }
     },
+
 
     _getPaymentType(paymentMethod) {
         switch (paymentMethod) {
