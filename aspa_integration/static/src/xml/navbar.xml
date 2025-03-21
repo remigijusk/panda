@@ -5,9 +5,9 @@
             <DropdownItem onSelected="() => this.pos.printXreport()">
                 X report
             </DropdownItem>
-            <DropdownItem onSelected="() => this.pos.printZreport()">
-                Z report
-            </DropdownItem>
+<!--            <DropdownItem onSelected="() => this.pos.printZreport()">-->
+<!--                Z report-->
+<!--            </DropdownItem>-->
         </xpath>
     </t>
 </templates>

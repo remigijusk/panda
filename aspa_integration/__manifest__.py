@@ -3,7 +3,7 @@
 
 {
     "name": "ASPA integration",
-    "version": "18.0.0.1.0",
+    "version": "18.0.0.1.1",
     "license": "Other proprietary",
     "author": "UAB 'Devtouch!'",
     "website": "https://www.devtouch.lt",
@@ -24,6 +24,8 @@
             "aspa_integration/static/src/js/payment_screen_extension.js",
             "aspa_integration/static/src/js/cash_move_popup.js",
             "aspa_integration/static/src/js/pos_store.js",
+            "aspa_integration/static/src/js/closing_popup.js",
+            "aspa_integration/static/src/js/opening_control_popup.js",
             "aspa_integration/static/src/xml/navbar.xml",
         ],
     },
