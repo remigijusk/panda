@@ -3,7 +3,7 @@
 
 {
     "name": "ASPA integration",
-    "version": "18.0.0.1.1",
+    "version": "18.0.0.1.2",
     "license": "Other proprietary",
     "author": "UAB 'Devtouch!'",
     "website": "https://www.devtouch.lt",

@@ -27,12 +27,10 @@ patch(PaymentScreen.prototype, {
                 const orderLines = order.lines;
                 let posReference;
                 for (const line of orderLines) {
-                    console.log("line raw id:", line.refunded_orderline_id.raw.id);
                     const originOrders = await this.orm.call("pos.order", "search_read", [
                         [["lines", "in", [line.refunded_orderline_id.raw.id]]],
                         ["pos_reference"],
                     ]);
-                    console.log("originOrders:", originOrders);
 
                     if (originOrders && originOrders.length > 0) {
                         posReference = originOrders[0].pos_reference;
@@ -57,7 +55,6 @@ patch(PaymentScreen.prototype, {
                     receiptNumber = posReference?.trim() || "";
                     if (receiptNumber) {
                         receiptNumber = receiptNumber.replace(/[^0-9]/g, '');
-                        console.log("receiptNumber:", receiptNumber);
                     }
                 }
 
@@ -81,23 +78,17 @@ patch(PaymentScreen.prototype, {
                     continue;
                 }
 
-                console.log(line);
                 const product = line.product_id;
                 let quantity = line.qty;
                 if (quantity < 0) {
                     quantity = Math.abs(quantity);
                 }
                 const taxLetter = product.is_deposit ? "N" : "A";
-                console.log("unit price:", line.get_unit_price());
                 const unitPrice = line.get_price_with_tax_before_discount() / quantity;
-                console.log('line price subtotal:', line.price_subtotal);
-                console.log('unit price:', unitPrice);
-                console.log('quantity:', quantity);
                 let formattedPrice = unitPrice.toFixed(4);
                 if (order._isRefundOrder()) {
                     formattedPrice = Math.abs(formattedPrice);
                 }
-                console.log('formatted price:', formattedPrice);
                 const discount = line.discount > 0 ? `,-${line.discount}` : "";
                 const parameter = `${product.display_name}\t${taxLetter}${formattedPrice}*${quantity}${discount}`;
 
@@ -110,12 +101,8 @@ patch(PaymentScreen.prototype, {
         }
     },
 
-    // finalize validation and register payment lines before closing the receipt
+    // finalize validation
     async _finalizeValidation() {
-        await this._openFiscalReceipt();
-        await this._registerProducts();
-        const paymentLines = this.currentOrder.payment_ids;
-        let receiptNumber;
         const order = this.pos.get_order();
 
         if (!order) {
@@ -123,46 +110,18 @@ patch(PaymentScreen.prototype, {
             return;
         }
 
-        let fullAmount;
-        try {
-            const orderLines = Array.isArray(order.lines) ? order.lines : [...order.lines];
-            const discountLine = orderLines.find(line => line.product_id?.default_code === "DISC");
-            let parameterText = "11";
-            if (discountLine) {
-                const discountLineSubtotal = discountLine.price_subtotal_incl * -1;
-                const orderPriceSubtotal = order.get_total_with_tax() + discountLineSubtotal;
-                const discountPercentage = (discountLineSubtotal / orderPriceSubtotal) * 100;
-                parameterText = `11,-${discountPercentage.toFixed()}`;
-            }
-            const subtotalResponse = await aspa.sendCommand("51", parameterText);
-            console.log("subtotalResponse:", subtotalResponse);
-            fullAmount = parseFloat(subtotalResponse.CmdlineResult.split(",")[1]) / 100;
-            if (order._isRefundOrder()) {
-                fullAmount = Math.abs(fullAmount);
-            }
-            console.log("fullAmount:", fullAmount);
+        // deal with one cent rounding issues
+        const orderLines = order.lines;
+        let oneCentAdjustment = await this._centRoundingAdjustment(orderLines);
 
-        } catch (error) {
-            console.error("Error processing order lines:", error);
-        }
-
-
-        // register single payment line
-        if (paymentLines && paymentLines.length == 1) {
-            const line = paymentLines[0];
+        // process BankasSale0 first if there's a card payment
+        const paymentLines = this.currentOrder.payment_ids;
+        for (const line of paymentLines) {
             const paymentType = this._getPaymentType(line.payment_method_id.name);
-            let roundedFullAmount = (Math.round(fullAmount * 20) / 20).toFixed(2);
-
-            if (order._isRefundOrder()) {
-                roundedFullAmount = roundedFullAmount * -1;
-            }
-
-            const paymentAmount = line.amount;
-            let paymentText = "";
-
+            const amount = (parseFloat(line.amount.toFixed(2)) + oneCentAdjustment).toFixed(2);
             if (paymentType === 'C') {
                 try {
-                    const bankasResponse = await aspa.sendBankas0({ amount: fullAmount });
+                    const bankasResponse = await aspa.sendBankas0({ amount: amount });
                     if (!bankasResponse || !bankasResponse.BankasSale0Result.startsWith("OK")) {
                         console.error("Bank card payment failed:", bankasResponse);
                         throw new Error("Bank card payment failed.");
@@ -172,36 +131,46 @@ patch(PaymentScreen.prototype, {
                     throw new Error("Bank card payment failed.");
                 }
             }
-
-            console.log('Payment Amount:', paymentAmount);
-            console.log('Rounded Full Amount:', roundedFullAmount);
-
-            if (paymentAmount == roundedFullAmount && paymentType === 'P' && !order._isRefundOrder()) {
-                paymentText = ``;
-            } else if (paymentAmount > roundedFullAmount && paymentType === 'P') {
-                paymentText = `\t${paymentType}${paymentAmount}`;
-            } else if (paymentType === 'P' && order._isRefundOrder()) {
-                paymentText = `\t${paymentType}${roundedFullAmount}`;
-            } else if (paymentType === 'C') {
-                paymentText = `\t${paymentType}${fullAmount}`;
-            } else {
-                paymentText = `\t${paymentType}${paymentAmount}`;
-            }
-
-            try {
-                await aspa.sendCommand("53", paymentText);
-            } catch (error) {
-                console.error("Error registering payment line:", error);
-                throw error;
-            }
         }
 
-        // register multiple payment lines
-        if (paymentLines && paymentLines.length > 1) {
-            await this._processMixedPayments(paymentLines, fullAmount);
+        await this._openFiscalReceipt();
+        await this._registerProducts();
+
+        // calculate full amount
+        let fullAmount;
+        try {
+            const orderLines = Array.isArray(order.lines) ? order.lines : [...order.lines];
+            const discountLine = orderLines.find(line => line.product_id?.default_code === "DISC");
+            let parameterText = "11";
+
+            if (discountLine) {
+                const discountLineSubtotal = discountLine.price_subtotal_incl * -1;
+                const orderPriceSubtotal = order.get_total_with_tax() + discountLineSubtotal;
+                const discountPercentage = (discountLineSubtotal / orderPriceSubtotal) * 100;
+                parameterText = `11,-${discountPercentage.toFixed()}`;
+            }
+
+            const subtotalResponse = await aspa.sendCommand("51", parameterText);
+            fullAmount = parseFloat(subtotalResponse.CmdlineResult.split(",")[1]) / 100;
+
+            if (order._isRefundOrder()) {
+                fullAmount = Math.abs(fullAmount);
+            }
+
+        } catch (error) {
+            console.error("Error processing order lines:", error);
+            return;
+        }
+
+        // process payments (cash or mixed)
+        if (paymentLines && paymentLines.length === 1) {
+            await this._processSinglePayment(paymentLines[0], fullAmount, order);
+        } else if (paymentLines && paymentLines.length > 1) {
+            await this._processMixedPayments(paymentLines);
         }
 
         // finalize fiscal receipt
+        let receiptNumber;
         try {
             const response = await aspa.sendCommand("56", "");
             receiptNumber = response.CmdlineResult.split(",")[1];
@@ -211,6 +180,7 @@ patch(PaymentScreen.prototype, {
             throw error;
         }
 
+        // save the receipt reference
         const finalized = await super._finalizeValidation();
         if (order && order.raw.id) {
             await this.orm.call("pos.order", "update_pos_reference", [
@@ -218,49 +188,109 @@ patch(PaymentScreen.prototype, {
                 `Aspa Receipt:${receiptNumber}`,
             ]);
         }
+
         return finalized;
     },
 
+    // process single payments
+    async _processSinglePayment(line, fullAmount, order) {
+        const paymentType = this._getPaymentType(line.payment_method_id.name);
+        let roundedFullAmount = (Math.round(fullAmount * 20) / 20).toFixed(2);
+
+        if (order._isRefundOrder()) {
+            roundedFullAmount = roundedFullAmount * -1;
+        }
+
+        const paymentAmount = line.amount.toFixed(2);
+        let paymentText = "";
+
+        if (paymentAmount == roundedFullAmount && paymentType === 'P' && !order._isRefundOrder()) {
+            paymentText = ``;
+        } else if (paymentAmount > roundedFullAmount && paymentType === 'P') {
+            paymentText = `\t${paymentType}${paymentAmount}`;
+        } else if (paymentType === 'P' && order._isRefundOrder()) {
+            paymentText = `\t${paymentType}${roundedFullAmount}`;
+        } else if (paymentType === 'C') {
+            paymentText = `\t${paymentType}${fullAmount}`;
+        } else {
+            paymentText = `\t${paymentType}${paymentAmount}`;
+        }
+
+        try {
+            await aspa.sendCommand("53", paymentText);
+        } catch (error) {
+            console.error("Error registering payment line:", error);
+            await aspa.sendCommand("57", "");
+            throw error;
+        }
+    },
+
     // process mixed payments
-    async _processMixedPayments(paymentLines, fullAmount) {
-        let remainingAmount = Math.floor(fullAmount * 100) / 100;
-        let remainingAmountResponse = {};
-        let remainingAmountAspa = 0;
+    async _processMixedPayments(paymentLines) {
+        paymentLines.sort((a, b) => {
+            const typeA = this._getPaymentType(a.payment_method_id.name);
+            const typeB = this._getPaymentType(b.payment_method_id.name);
+            return typeA === 'C' ? -1 : 1;
+        });
+
+        let remainingAmount = 0.00;
 
         for (const line of paymentLines) {
             const paymentType = this._getPaymentType(line.payment_method_id.name);
 
-            if (paymentType === 'P') {
-                let cashPaymentText = `\t${paymentType}${line.amount.toFixed(2)}`;
-                remainingAmount -= line.amount;
-                try {
-                    remainingAmountResponse = await aspa.sendCommand("53", cashPaymentText);
-                    console.log("remainingAmountResponse:", remainingAmountResponse);
-                } catch (error) {
-                    console.error("Error registering cash payment line:", error);
-                    throw error;
-                }
-            }
-
             if (paymentType === 'C') {
-                if (remainingAmountResponse.CmdlineResult) {
-                    remainingAmountAspa = parseFloat(remainingAmountResponse.CmdlineResult.split("D+")[1]) / 100;
-                    console.log(remainingAmountAspa);
-                }
-
-                let cardPaymentText = `\t${paymentType}${remainingAmount.toFixed(2)}`;
+                const oneCentAdjustment = await this._centRoundingAdjustment(this.currentOrder.lines);
+                const paymentAmount = (parseFloat(line.amount.toFixed(2)) + oneCentAdjustment).toFixed(2);
+                let paymentText = `\t${paymentType}${paymentAmount}`;
+                let cardPaymentResponse;
                 try {
-                    await aspa.sendBankas0({ amount: remainingAmount.toFixed(2)});
-                    await aspa.sendCommand("53", cardPaymentText);
+                    cardPaymentResponse = await aspa.sendCommand("53", paymentText);
                 } catch (error) {
-                    console.error("Error registering card payment line:", error);
+                    console.error(`Error registering ${paymentType} payment line:`, error);
+                    await aspa.sendCommand("57", "");
                     throw error;
                 }
-                remainingAmount = 0;
+                const responseValue = cardPaymentResponse.CmdlineResult.split(",")[1];
+                const remainingAfterCard = parseFloat(responseValue.replace(/^D\+/, '')) / 100;
+                remainingAmount = remainingAfterCard;
             }
+
+            if (paymentType === 'P') {
+                const paymentAmount = remainingAmount.toFixed(2);
+                let paymentText = `\t${paymentType}${paymentAmount}`;
+                try {
+                    await aspa.sendCommand("53", paymentText);
+                } catch (error) {
+                    console.error(`Error registering ${paymentType} payment line:`, error);
+                    await aspa.sendCommand("57", "");
+                    throw error;
+                }
+            }
+
+
         }
     },
 
+    // cent rounding adjustment
+    async _centRoundingAdjustment(orderLines) {
+        let oneCentAdjustment = 0.00;
+
+        for (const line of orderLines) {
+            if (line.discount > 0) {
+                const odooDiscountedPrice = line.get_price_with_tax();
+                const expectedPrice = line.get_price_with_tax_before_discount() * (1 - line.discount / 100);
+
+                if (Math.round(odooDiscountedPrice * 100) > Math.floor(expectedPrice * 100)) {
+                    console.log("⚠️ Odoo rounded up, but ASPA rounds down. Fixing by subtracting 0.01");
+                    oneCentAdjustment -= 0.01;
+                } else if (Math.round(odooDiscountedPrice * 100) < Math.floor(expectedPrice * 100)) {
+                    console.log("⚠️ Odoo rounded down, but ASPA rounds up. No need to adjust.");
+                }
+            }
+        }
+
+        return oneCentAdjustment;
+    },
 
     _getPaymentType(paymentMethod) {
         switch (paymentMethod) {
@@ -284,4 +314,5 @@ patch(PaymentScreen.prototype, {
                 return 'P';
         }
     },
+
 });
