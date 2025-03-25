@@ -9,7 +9,7 @@ const aspaIntegration = new ASPAIntegration();
 patch(OpeningControlPopup.prototype, {
     async confirm() {
         const confirmed = await super.confirm();
-        const openingCash = parseFloat(this.state.openingCash.replace(',', ''));
+        const openingCash = Number(this.state.openingCash.replace(',', '.'));
         try {
             await aspaIntegration.sendCommand("70", "+" + openingCash.toFixed(2));
         } catch (error) {
