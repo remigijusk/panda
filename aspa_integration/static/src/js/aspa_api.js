@@ -69,7 +69,14 @@ class ASPAIntegration {
             return null;
         }
 
-        const url = this.state.aspaUrl;
+        let url = this.state.aspaUrl;
+
+        if (window.location.protocol === "https:") {
+            if (url.includes(".ngrok.app")) {
+                url = url.replace("http://", "https://");
+            }
+        }
+
         const payload = { amount: String(amount) };
 
         console.log("Sending Bankas0 request:", JSON.stringify(payload));
