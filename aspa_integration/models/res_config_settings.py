@@ -6,7 +6,7 @@ class ResCompany(models.Model):
 
     aspa_api_url = fields.Char(
         string="ASPA API URL",
-        default="http://127.0.0.1:8111/json/fp550/Cmdline",
+        default="http://pitaja.ngrok.app",
     )
 
 
