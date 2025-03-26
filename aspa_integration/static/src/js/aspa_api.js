@@ -1,10 +1,23 @@
 /** @odoo-module **/
 
+import { rpc } from "@web/core/network/rpc";
+
 class ASPAIntegration {
     constructor() {
         this.state = {
             status: "",
+            aspaUrl: "",
         };
+    }
+
+    async loadAspaUrl() {
+        try {
+            const result = await rpc("/aspa/get_url", {});
+            this.state.aspaUrl = result.url;
+            console.log("Loaded ASPA URL:", this.state.aspaUrl);
+        } catch (error) {
+            console.error("Failed to load ASPA URL:", error);
+        }
     }
 
     async sendCommand(cmd, parameter) {
@@ -15,7 +28,6 @@ class ASPAIntegration {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ cmd, parameter }),
             });
-
 
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
@@ -49,36 +61,43 @@ class ASPAIntegration {
         }
     }
 
-    async sendBankas0(data) {
-        try {
-            console.log("Sending Bankas0:", data);
-            const response = await fetch("/aspa/bankas0", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            });
+    async sendBankas0(amount) {
+        await this.loadAspaUrl();
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-
-            const responseJson = await response.json();
-            const responseData = responseJson.result.data;
-            console.log('Response:', responseData);
-
-            if (responseData.BankasSale0Result.startsWith("OK")) {
-                console.log("Bankas0 successful:", responseData.BankasSale0Result);
-                return responseData;
-            } else {
-                console.error("Bankas0 failed:", responseData.BankasSale0Result);
-                return null;
-            }
-        } catch (error) {
-            console.error("Error sending Bankas0:", error);
+        if (!this.state.aspaUrl) {
+            console.error("No ASPA URL configured!");
             return null;
         }
-    }
 
+        const url = this.state.aspaUrl;
+        const payload = { amount: String(amount) };
+
+        console.log("Sending Bankas0 request:", JSON.stringify(payload));
+        console.log("To URL:", url);
+
+        return new Promise((resolve, reject) => {
+            $.ajax({
+                type: "POST",
+                url: url,
+                data: JSON.stringify(payload),
+                contentType: "application/json",
+                accept: "application/json",
+                success: function (response) {
+                    console.log("Received response:", response);
+                    try {
+                        const parsedResponse = JSON.parse(JSON.stringify(response));
+                        resolve(parsedResponse);
+                    } catch (e) {
+                        reject(new Error("Invalid JSON response from BankasSale0"));
+                    }
+                },
+                error: function (error) {
+                    console.error("BankasSale0 failed:", error);
+                    reject(error);
+                }
+            });
+        });
+    }
 }
 
 export default ASPAIntegration;

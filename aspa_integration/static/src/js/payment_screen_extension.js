@@ -121,7 +121,7 @@ patch(PaymentScreen.prototype, {
             const amount = (parseFloat(line.amount.toFixed(2)) + oneCentAdjustment).toFixed(2);
             if (paymentType === 'C') {
                 try {
-                    const bankasResponse = await aspa.sendBankas0({ amount: amount });
+                    const bankasResponse = await aspa.sendBankas0(amount);
                     if (!bankasResponse || !bankasResponse.BankasSale0Result.startsWith("OK")) {
                         console.error("Bank card payment failed:", bankasResponse);
                         throw new Error("Bank card payment failed.");
@@ -284,7 +284,8 @@ patch(PaymentScreen.prototype, {
                     console.log("⚠️ Odoo rounded up, but ASPA rounds down. Fixing by subtracting 0.01");
                     oneCentAdjustment -= 0.01;
                 } else if (Math.round(odooDiscountedPrice * 100) < Math.floor(expectedPrice * 100)) {
-                    console.log("⚠️ Odoo rounded down, but ASPA rounds up. No need to adjust.");
+                    console.log("⚠️ Odoo rounded down, but ASPA rounds up. Fixing by adding 0.01");
+                    oneCentAdjustment += 0.01;
                 }
             }
         }
