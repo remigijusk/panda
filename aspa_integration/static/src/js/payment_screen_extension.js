@@ -112,7 +112,7 @@ patch(PaymentScreen.prototype, {
 
         // deal with one cent rounding issues
         const orderLines = order.lines;
-        let oneCentAdjustment = await this._centRoundingAdjustment(orderLines);
+        let oneCentAdjustment = await this._centRoundingAdjustment(order);
 
         // process BankasSale0 first if there's a card payment
         const paymentLines = this.currentOrder.payment_ids;
@@ -239,7 +239,7 @@ patch(PaymentScreen.prototype, {
             const paymentType = this._getPaymentType(line.payment_method_id.name);
 
             if (paymentType === 'C') {
-                const oneCentAdjustment = await this._centRoundingAdjustment(this.currentOrder.lines);
+                const oneCentAdjustment = await this._centRoundingAdjustment(this.currentOrder);
                 const paymentAmount = (parseFloat(line.amount.toFixed(2)) + oneCentAdjustment).toFixed(2);
                 let paymentText = `\t${paymentType}${paymentAmount}`;
                 let cardPaymentResponse;
@@ -271,28 +271,58 @@ patch(PaymentScreen.prototype, {
         }
     },
 
-    // cent rounding adjustment
-    async _centRoundingAdjustment(orderLines) {
-        let oneCentAdjustment = 0.00;
+    // handle one cent rounding issues
+    _centRoundingAdjustment(order) {
+        const orderLines = order.lines || [];
+        let rawPreDiscountTotal = 0.0;
+        let odooDiscountedRawTotal = 0.0;
+        let odooDisplayedTotal = 0.0;
+        let hybridTotal = 0.0;
+        let hybridMismatchTotal = 0.0;
 
         for (const line of orderLines) {
-            if (line.discount > 0) {
-                const odooDiscountedPrice = line.get_price_with_tax();
-                const expectedPrice = line.get_price_with_tax_before_discount() * (1 - line.discount / 100);
+            const name = typeof line.get_full_product_name === "function"
+                ? line.get_full_product_name()
+                : "unknown";
+            const priceBefore = typeof line.get_price_with_tax_before_discount === "function"
+                ? line.get_price_with_tax_before_discount()
+                : 0;
+            const discount = typeof line.discount === "number" ? line.discount : 0;
+            const afterDiscount = discount > 0
+                ? priceBefore * (1 - discount / 100)
+                : priceBefore;
 
-                if (Math.round(odooDiscountedPrice * 100) > Math.floor(expectedPrice * 100)) {
-                    console.log("⚠️ Odoo rounded up, but ASPA rounds down. Fixing by subtracting 0.01");
-                    oneCentAdjustment -= 0.01;
-                } else if (Math.round(odooDiscountedPrice * 100) < Math.floor(expectedPrice * 100)) {
-                    console.log("⚠️ Odoo rounded down, but ASPA rounds up. Fixing by adding 0.01");
-                    oneCentAdjustment += 0.01;
-                }
+            const thirdDigit = Math.floor((afterDiscount * 1000) % 10);
+            const hybridRounded = thirdDigit === 5
+                ? Math.floor(afterDiscount * 100) / 100
+                : Math.round(afterDiscount * 100) / 100;
+
+            const displayed = typeof line.get_price_with_tax === "function"
+                ? line.get_price_with_tax()
+                : 0;
+
+            const mismatch = +(hybridRounded - displayed).toFixed(2);
+
+            if (mismatch !== 0.0) {
+                console.warn(`     • ⛔ Hybrid mismatch on this line: ${mismatch}`);
             }
+
+            rawPreDiscountTotal += priceBefore;
+            odooDiscountedRawTotal += afterDiscount;
+            odooDisplayedTotal += displayed;
+            hybridTotal += hybridRounded;
+            hybridMismatchTotal += mismatch;
         }
 
-        return oneCentAdjustment;
-    },
+        const adjustment = +hybridMismatchTotal.toFixed(2);
 
+        if (adjustment !== 0.0) {
+            console.warn(`⚠️ Adjusting by ${adjustment > 0 ? "+" : ""}${adjustment.toFixed(2)} (ASPA hybrid mismatch)`);
+            return adjustment;
+        }
+
+        return 0.00;
+    },
     _getPaymentType(paymentMethod) {
         switch (paymentMethod) {
             case 'Cash':

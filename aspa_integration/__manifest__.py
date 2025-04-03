@@ -3,7 +3,11 @@
 
 {
     "name": "ASPA integration",
+<<<<<<< Updated upstream
     "version": "18.0.0.1.7",
+=======
+    "version": "18.0.0.2.0",
+>>>>>>> Stashed changes
     "license": "Other proprietary",
     "author": "UAB 'Devtouch!'",
     "website": "https://www.devtouch.lt",
