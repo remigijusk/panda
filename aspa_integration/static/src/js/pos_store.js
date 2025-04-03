@@ -13,6 +13,7 @@ patch(PosStore.prototype, {
             console.error("Error printing X-report:", error);
         }
     },
+
     async printZreport() {
         console.log("Printing Z-report");
         try {
@@ -20,5 +21,55 @@ patch(PosStore.prototype, {
         } catch (error) {
             console.error("Error printing Z-report:", error);
         }
+    },
+
+    async onClickWeigh() {
+    const order = this.selectedOrder;
+    const line = order?.get_selected_orderline();
+
+    if (!line) {
+        this.notification.add("No order line selected", { type: "warning" });
+        return;
     }
+
+    try {
+        const response = await aspaIntegration.sendCommand("1000", "");
+        const result = response?.CmdlineResult?.trim();
+
+        if (!result) {
+            this.notification.add("Empty response from scale", { type: "danger" });
+            return;
+        }
+
+        const match = result.match(/^OK,([SU])\s+(\d+)g$/);
+
+        if (!match) {
+            this.notification.add("Invalid weight format received", { type: "danger" });
+            return;
+        }
+
+        const stability = match[1];
+        const grams = parseInt(match[2], 10);
+
+        if (isNaN(grams)) {
+            this.notification.add("Weight parse error", { type: "danger" });
+            return;
+        }
+
+        if (stability === "U") {
+            this.notification.add("Unstable weight detected. Please wait...", { type: "warning" });
+            return;
+        }
+
+        const kg = grams / 1000;
+        line.set_quantity(kg);
+
+    } catch (error) {
+        console.error("Error during ASPA weigh:", error);
+        this.notification.add("Weighing failed", { type: "danger" });
+    }
+}
+
+
+
 });

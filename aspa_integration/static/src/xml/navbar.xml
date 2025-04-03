@@ -10,4 +10,12 @@
 <!--            </DropdownItem>-->
         </xpath>
     </t>
+
+    <t t-name="aspa_integration.ControlButtons" t-inherit="point_of_sale.ControlButtons" t-inherit-mode="extension">
+        <xpath expr="//OrderlineNoteButton[@label='internalNoteLabel()']" position="after">
+            <button class="btn btn-lg bg-white py-2" t-on-click="() => this.pos.onClickWeigh()" t-att-disabled="this.pos.get_order().is_empty()">
+                <i class="fa fa-balance-scale" role="img" aria-label="Weight"/>
+            </button>
+        </xpath>
+    </t>
 </templates>
