@@ -17,6 +17,7 @@
     "data": [
         "views/res_config_views.xml",
         "views/product_views.xml",
+        "views/pos_config_views.xml",
     ],
     "assets": {
         "point_of_sale._assets_pos": [

@@ -11,6 +11,7 @@ patch(PaymentScreen.prototype, {
     setup() {
         super.setup();
         this.orm = useService("orm");
+        aspa.setPosConfigId(this.pos.config.id);
     },
 
     async _openFiscalReceipt() {
@@ -42,8 +43,13 @@ patch(PaymentScreen.prototype, {
                     ? posReference.split("Aspa Receipt:")[1].trim()
                     : posReference.replace(/[^0-9]/g, '');
                 const returnCommand = `G,${receiptNumber};`;
+                const pos_config_id = this.pos.config.id;
+
+
                 await aspa.sendCommand("48", returnCommand);
             } else {
+                console.log(this)
+                console.log(this.pos.config.id)
                 await aspa.sendCommand("48", "");
             }
         } catch (error) {
