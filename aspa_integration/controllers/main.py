@@ -17,6 +17,9 @@ class ASPAController(http.Controller):
         parameter = data.get('parameter')
         pos_config_id = data.get('pos_config_id')
 
+        print("Received command:", cmd)
+        print('Config ID:', pos_config_id)
+
         pos_config = request.env['pos.config'].sudo().browse(pos_config_id) if pos_config_id else request.env.user.company_id.pos_config_id
 
         if not cmd:
