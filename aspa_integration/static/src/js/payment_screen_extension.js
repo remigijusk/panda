@@ -57,7 +57,6 @@ patch(PaymentScreen.prototype, {
         }
     },
 
-
     async _registerProducts() {
 
         function splitProductNameByWords(name, maxLength = 41) {

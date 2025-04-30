@@ -7,23 +7,11 @@ class ASPAIntegration {
         this.state = {
             status: "",
             aspaUrl: "",
-            posConfigId: null,   // 🆕 save pos.config id here
+            posConfigId: null,
         };
     }
 
-    async loadAspaUrl() {
-        try {
-            const result = await rpc("/aspa/get_url", {
-                pos_config_id: this.state.posConfigId,  // 🆕 pass it to backend
-            });
-            this.state.aspaUrl = result.url;
-            console.log("Loaded ASPA URL:", this.state.aspaUrl);
-        } catch (error) {
-            console.error("Failed to load ASPA URL:", error);
-        }
-    }
-
-    setPosConfigId(id) {  // 🆕 simple setter
+    setPosConfigId(id) {
         this.state.posConfigId = id;
     }
 
@@ -36,7 +24,7 @@ class ASPAIntegration {
                 body: JSON.stringify({
                     cmd,
                     parameter,
-                    pos_config_id: this.state.posConfigId,  // 🆕 always send pos_config_id
+                    pos_config_id: this.state.posConfigId,
                 }),
             });
 
@@ -70,43 +58,21 @@ class ASPAIntegration {
     }
 
     async sendBankas0(amount) {
-        await this.loadAspaUrl();
-
-        if (!this.state.aspaUrl) {
-            console.error("No ASPA URL configured!");
-            return null;
-        }
-
-        let url = this.state.aspaUrl;
-
-        if (window.location.protocol === "https:" && url.includes(".ngrok.app")) {
-            url = url.replace("http://", "https://");
-        }
-
-        const payload = { amount: String(amount) };
-        console.log("Sending Bankas0 request:", JSON.stringify(payload));
-        console.log("To URL:", url);
-
-        return new Promise((resolve, reject) => {
-            $.ajax({
-                type: "POST",
-                url: url,
-                data: JSON.stringify(payload),
-                contentType: "application/json",
-                accept: "application/json",
-                success: function (response) {
-                    try {
-                        const parsedResponse = JSON.parse(JSON.stringify(response));
-                        resolve(parsedResponse);
-                    } catch (e) {
-                        reject(new Error("Invalid JSON response from BankasSale0"));
-                    }
-                },
-                error: function (error) {
-                    reject(error);
-                }
+        try {
+            const result = await rpc("/aspa/bankassale0", {
+                amount: amount,
+                pos_config_id: this.state.posConfigId,
             });
-        });
+            if (result.success) {
+                return result.data;
+            } else {
+                console.error("BankasSale0 failed:", result.message);
+                throw new Error(result.message || "BankasSale0 error");
+            }
+        } catch (error) {
+            console.error("Error sending BankasSale0 request:", error);
+            throw error;
+        }
     }
 }
 
