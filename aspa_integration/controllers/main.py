@@ -29,7 +29,7 @@ class ASPAController(http.Controller):
         payload = {"cmd": cmd, "parameter": parameter}
 
         try:
-            response = requests.post(base_url, json=payload, timeout=10)
+            response = requests.post(base_url, json=payload, timeout=40)
             response.raise_for_status()
             return {"success": True, "data": response.json()}
         except requests.RequestException as e:
@@ -52,7 +52,7 @@ class ASPAController(http.Controller):
         payload = {"amount": str(amount)}
 
         try:
-            response = requests.post(url, json=payload, timeout=10)
+            response = requests.post(url, json=payload, timeout=40)
             response.raise_for_status()
             return {"success": True, "data": response.json()}
         except requests.RequestException as e:

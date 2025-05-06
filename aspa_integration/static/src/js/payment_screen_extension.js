@@ -4,6 +4,8 @@ import { patch } from "@web/core/utils/patch";
 import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
 import ASPAIntegration from "./aspa_api";
 import { useService } from "@web/core/utils/hooks";
+import { _t } from "@web/core/l10n/translation";
+import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 
 const aspa = new ASPAIntegration();
 
@@ -128,8 +130,13 @@ patch(PaymentScreen.prototype, {
             if (paymentType === 'C') {
                 try {
                     const bankasResponse = await aspa.sendBankas0(amount);
+                    console.log("Bankas response:", bankasResponse);
                     if (!bankasResponse || !bankasResponse.BankasSale0Result.startsWith("OK")) {
                         console.error("Bank card payment failed:", bankasResponse);
+                        this.dialog.add(AlertDialog, {
+                            title: _t("Error: bank card was not inserted"),
+                            body: _t("ASPA timeout or card not inserted."),
+                        });
                         throw new Error("Bank card payment failed.");
                     }
                 } catch (error) {
