@@ -7,44 +7,53 @@ import ASPAIntegration from "./aspa_api";
 const aspaIntegration = new ASPAIntegration();
 
 function parseLocaleNumber(str) {
-    if (!str || typeof str !== 'string') return NaN;
+
+    if (!str || typeof str !== 'string') {
+        return NaN;
+    }
 
     str = str.replace(/\s/g, '');
 
     const comma = str.includes(',');
     const dot = str.includes('.');
 
+    let parsed;
+
     if (comma && dot && str.indexOf(',') > str.indexOf('.')) {
-        return Number(str.replace(/\./g, '').replace(',', '.'));
+        parsed = Number(str.replace(/\./g, '').replace(',', '.'));
+    } else if (comma && dot && str.indexOf('.') > str.indexOf(',')) {
+        parsed = Number(str.replace(/,/g, ''));
+    } else if (comma && !dot) {
+        parsed = Number(str.replace(',', '.'));
+    } else {
+        parsed = Number(str);
     }
 
-    if (comma && dot && str.indexOf('.') > str.indexOf(',')) {
-        return Number(str.replace(/,/g, ''));
-    }
-
-    if (comma && !dot) {
-        return Number(str.replace(',', '.'));
-    }
-
-    return Number(str);
+    return parsed;
 }
-
 
 patch(OpeningControlPopup.prototype, {
     async confirm() {
+
         const confirmed = await super.confirm();
         const rawCash = this.state.openingCash;
         const openingCash = parseLocaleNumber(rawCash);
 
         if (isNaN(openingCash)) {
-            console.warn("Invalid cash input format:", rawCash);
             return confirmed;
         }
 
+        const param = "+" + openingCash.toFixed(2);
+        if (this.pos?.config?.id) {
+            aspaIntegration.setPosConfigId(this.pos.config.id);
+        } else {
+            console.warn("[ASPA DEBUG] this.pos.config.id not available!");
+        }
+
         try {
-            await aspaIntegration.sendCommand("70", "+" + openingCash.toFixed(2));
+            const response = await aspaIntegration.sendCommand("70", param);
         } catch (error) {
-            console.error("Error processing cash operation:", error);
+            console.error("[ASPA DEBUG] Error sending ASPA command '70' during register opening:", error);
         }
 
         return confirmed;
