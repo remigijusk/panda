@@ -13,7 +13,6 @@ class ProductLabelLayout(models.TransientModel):
 
     def process(self):
         self.ensure_one()
-        print('\n🔥 Entered process() for ProductLabelLayout')
 
         if self.print_format == 'custom_dymo':
             xml_id = 'product_label_custom_dymo.report_product_label_custom_dymo_action'
