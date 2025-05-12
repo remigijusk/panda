@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Custom Product Label (DYMO)",
-    "version": "18.0.0.1.1",
+    "version": "18.0.0.1.2",
     "license": "Other proprietary",
     'summary': 'Custom DYMO product label with country and price incl. TAX',
     "author": "UAB 'Devtouch!'",

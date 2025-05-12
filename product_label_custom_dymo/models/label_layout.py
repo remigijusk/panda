@@ -64,5 +64,5 @@ class ProductProduct(models.Model):
 
     final_price_with_tax = fields.Float('Final Price with Tax')
     final_currency_symbol = fields.Char('Currency Symbol')
-    final_base_unit_name = fields.Char('Base Unit Name')
+    final_base_unit_name = fields.Char('Unit Name Product')
     final_country_name = fields.Char('Country of Origin')
