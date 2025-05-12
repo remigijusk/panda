@@ -62,7 +62,7 @@ class ProductLabelLayout(models.TransientModel):
 class ProductProduct(models.Model):
     _inherit = 'product.product'
 
-    final_price_with_tax = fields.Float('Final Price with Tax')
-    final_currency_symbol = fields.Char('Currency Symbol')
+    final_price_with_tax = fields.Float('Final Price with Tax product')
+    final_currency_symbol = fields.Char('Currency Symbol product')
     final_base_unit_name = fields.Char('Unit Name Product')
-    final_country_name = fields.Char('Country of Origin')
+    final_country_name = fields.Char('Country of Origin Product')
