@@ -16,7 +16,7 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.external_layout">
-                    <div class="page" style="font-size: 14px;">
+                    <div class="page" style="font-size: 14px; font-family: sans-serif;">
                         
                         <t t-set="is_kpo" t-value="False"/>
                         <t t-set="total_amount" t-value="0.0"/>
