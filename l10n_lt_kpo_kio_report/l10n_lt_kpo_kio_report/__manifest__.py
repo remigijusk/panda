@@ -1,12 +1,13 @@
 {
     'name': 'Lietuvos KPO ir KIO spausdinimas',
-    'version': '18.0.1.1.0',
+    'version': '18.0.1.2.0',
     'category': 'Accounting/Localizations',
     'summary': 'Spausdinti lietuviškus Kasos Pajamų Orderius (KPO) ir Kasos Išlaidų Orderius (KIO)',
     'description': """
     Šis modulis prideda galimybę spausdinti Kasos pajamų orderį (KPO) ir Kasos išlaidų orderį (KIO) 
     tiesiai iš Žurnalo įrašų (account.move). 
     Automatiškai sugeneruoja sumą žodžiais bei užpildo "Pagrindas" lauką iš operacijos eilučių.
+    Prideda tiesioginį spausdinimo mygtuką į sąskaitos formą.
     """,
     'author': 'Jūsų Vardas',
     'website': 'https://www.jusu-domenas.lt',

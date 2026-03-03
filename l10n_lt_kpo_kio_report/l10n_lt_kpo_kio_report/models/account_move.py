@@ -43,3 +43,7 @@ class AccountMove(models.Model):
             else:
                 move.x_suma_zodziais = ""
                 move.x_pagrindas = ""
+
+    def action_print_kpo_kio(self):
+        """ Iškviečia KPO/KIO ataskaitos spausdinimą """
+        return self.env.ref('l10n_lt_kpo_kio_report.action_report_lt_kpo_kio').report_action(self)
