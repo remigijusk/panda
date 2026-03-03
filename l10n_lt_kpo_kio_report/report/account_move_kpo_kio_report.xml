@@ -61,7 +61,12 @@
                                 </p>
                                 <p class="mb-1">
                                     <strong>Pagrindas: </strong> 
-                                    <span t-field="o.ref"/>
+                                    <t t-if="o.x_pagrindas">
+                                        <span t-field="o.x_pagrindas"/>
+                                    </t>
+                                    <t t-else="">
+                                        <span t-field="o.ref"/>
+                                    </t>
                                 </p>
                             </div>
                         </div>
