@@ -2,6 +2,7 @@ import requests
 import json
 import base64
 import logging
+import re
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 
@@ -45,11 +46,13 @@ class AccountMove(models.Model):
         1. Look for any HANDWRITTEN text on the receipt (usually written with a pen). 
         2. Specifically look for vehicle plate numbers (e.g., HTT570, HTT 570).
         3. vendor_name is the SELLER (e.g. Viada, Circle K).
-        4. quantity is liters, unit_price is price per liter.
+        4. vendor_vat is the VAT number of the seller (e.g. LT114549113).
+        5. quantity is liters, unit_price is price per liter.
         
         JSON Structure:
         {
             "vendor_name": "string",
+            "vendor_vat": "string",
             "date": "YYYY-MM-DD",
             "total_without_vat": 0.00,
             "quantity": 0.00,
@@ -87,17 +90,25 @@ class AccountMove(models.Model):
             # Surašome pagrindinius duomenis
             vals = {}
             
-            # 1. Tiekėjo nustatymas
-            if data.get('vendor_name'):
+            # 1. Tiekėjo nustatymas (Paieška pagal PVM arba Pavadinimą)
+            partner = False
+            if data.get('vendor_vat'):
+                vat_clean = re.sub(r'[^A-Z0-9]', '', data['vendor_vat'].upper())
+                partner = self.env['res.partner'].search([
+                    '|', ('vat', 'ilike', vat_clean),
+                    ('vat', 'ilike', data['vendor_vat'])
+                ], limit=1)
+            
+            if not partner and data.get('vendor_name'):
                 partner = self.env['res.partner'].search([
                     ('name', 'ilike', data['vendor_name']),
                     ('supplier_rank', '>', 0)
                 ], limit=1)
                 if not partner:
                     partner = self.env['res.partner'].search([('name', 'ilike', data['vendor_name'])], limit=1)
-                
-                if partner:
-                    vals['partner_id'] = partner.id
+            
+            if partner:
+                vals['partner_id'] = partner.id
 
             # 2. Datos (Sąskaitos data = Apskaitos data)
             if data.get('date'):
@@ -125,7 +136,6 @@ class AccountMove(models.Model):
             vehicle_id = False
             plate_for_msg = ""
             if data.get('vehicle_plate'):
-                import re
                 plate_raw = data['vehicle_plate'].upper()
                 plate_clean = re.sub(r'[^A-Z0-9]', '', plate_raw)
                 plate_for_msg = plate_clean
