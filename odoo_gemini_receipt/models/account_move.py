@@ -51,7 +51,7 @@ class AccountMove(models.Model):
         6. unit_price: price per liter.
         7. rounding_amount: Look for "Apvalinimas", "Grynųjų apvalinimas" or "Rounding".
         8. has_rounding: Return true if you see words like "Apvalinimas" or "Rounding".
-        9. payment_method: Detect if it's "Grynais" (cash) or "Kortele" (card).
+        9. payment_method: Detect if it's "Grynais" (cash) or "Kortele" (card). Look for "Grynais", "Cash", "Kortelė", "Card", "Visa", "Mastercard".
         
         JSON Structure:
         {
@@ -143,6 +143,7 @@ class AccountMove(models.Model):
                 quantity = 1.0
 
             # 3.1 Grynųjų pinigų apvalinimas (nuo 2025 m.)
+            _logger.info("AI atsakymas apvalinimui: %s", data)
             if 'cash_rounding_id' in self._fields:
                 try:
                     rounding_raw = data.get('rounding_amount', 0)
@@ -158,32 +159,34 @@ class AccountMove(models.Model):
                     if has_rounding or abs(rounding_val) > 0 or payment_method == 'cash':
                         _logger.info("Bandoma pritaikyti apvalinimą. Metodas: %s, Suma: %s", payment_method, rounding_val)
                         
-                        # 1. Ieškome pagal pavadinimą (prioritetas jūsų 'Up') - naudojam =ilike saugumui
-                        rounding = self.env['account.cash.rounding'].search([
-                            ('name', '=ilike', 'Up')
+                        # 1. Ieškome pagal pavadinimą (prioritetas jūsų 'Up') - naudojam sudo() ir ilike
+                        rounding = self.env['account.cash.rounding'].sudo().search([
+                            ('name', 'ilike', 'up')
                         ], limit=1)
                         
                         # 2. Jei neradom 'Up', ieškom bet ko su 0.05 tikslumu
                         if not rounding:
-                            rounding = self.env['account.cash.rounding'].search([
+                            rounding = self.env['account.cash.rounding'].sudo().search([
                                 ('rounding', '=', 0.05)
                             ], limit=1)
                             
                         # 3. Jei vis tiek neradom, ieškom pagal kitus galimus pavadinimus
                         if not rounding:
-                            rounding = self.env['account.cash.rounding'].search([
+                            rounding = self.env['account.cash.rounding'].sudo().search([
                                 ('name', 'ilike', 'apvalinimas')
                             ], limit=1)
                         
                         # 4. Galiausiai imam bet kokią taisyklę
                         if not rounding:
-                            rounding = self.env['account.cash.rounding'].search([], limit=1)
+                            rounding = self.env['account.cash.rounding'].sudo().search([], limit=1)
                         
                         if rounding:
                             vals['cash_rounding_id'] = rounding.id
-                            _logger.info("Rasta apvalinimo taisyklė: %s (ID: %s)", rounding.name, rounding.id)
+                            _logger.info("SĖKMĖ: Rasta apvalinimo taisyklė: %s (ID: %s)", rounding.name, rounding.id)
+                        else:
+                            _logger.warning("KLAIDA: Nerasta jokia apvalinimo taisyklė sistemoje!")
                 except Exception as e:
-                    _logger.warning("Nepavyko pritaikyti apvalinimo: %s", str(e))
+                    _logger.error("Kritinė apvalinimo klaida: %s", str(e))
 
             # 4. Automobilio paieška pagal numerį
             vehicle_id = False
