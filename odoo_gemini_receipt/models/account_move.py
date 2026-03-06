@@ -45,10 +45,11 @@ class AccountMove(models.Model):
         IMPORTANT: 
         1. Look for any HANDWRITTEN text on the receipt (usually vehicle plate numbers).
         2. vendor_vat is the VAT number of the seller (e.g. LT114549113).
-        3. total_without_vat is the sum of all items EXCLUDING VAT (Be PVM).
-        4. total_with_vat is the final amount to pay (Su PVM / Mokėti).
-        5. quantity is liters, unit_price is price per liter.
-        6. rounding_amount: if there is "Apvalinimas" (cash rounding), extract its value.
+        3. total_without_vat: Look for "Be PVM" or "Mokestis A Be PVM". This is the taxable base.
+        4. total_with_vat: Look for "Mokėti" or "Su PVM". This is the final total.
+        5. quantity: liters (L).
+        6. unit_price: price per liter.
+        7. rounding_amount: Look for "Apvalinimas".
         
         JSON Structure:
         {
@@ -139,12 +140,15 @@ class AccountMove(models.Model):
 
             # 3.1 Grynųjų pinigų apvalinimas (nuo 2025 m.)
             if data.get('rounding_amount') and abs(float(data['rounding_amount'])) > 0:
-                rounding = self.env['account.cash.rounding'].search([
-                    '|', ('name', 'ilike', 'apvalinimas'),
-                    ('rounding', '=', 0.05)
-                ], limit=1)
-                if rounding:
-                    vals['cash_rounding_id'] = rounding.id
+                # Patikriname ar laukas egzistuoja modelyje
+                if 'cash_rounding_id' in self._fields:
+                    rounding = self.env['account.cash.rounding'].search([
+                        '|', ('name', '=', 'Up'),
+                        '|', ('name', 'ilike', 'apvalinimas'),
+                        ('rounding', '=', 0.05)
+                    ], limit=1)
+                    if rounding:
+                        vals['cash_rounding_id'] = rounding.id
 
             # 4. Automobilio paieška pagal numerį
             vehicle_id = False
