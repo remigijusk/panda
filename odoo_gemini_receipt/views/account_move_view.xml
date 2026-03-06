@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
-                <!-- Mygtukas dabar rodysis visose pirkimo sąskaitose ir kvituose -->
+                <!-- Mygtukas matomas visose pirkimo sąskaitose/kvituose, kol jie yra juodraščiai -->
                 <button name="action_scan_receipt_ai" 
                         string="GEMINI SKENUOTI" 
                         type="object" 
