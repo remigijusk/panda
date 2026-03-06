@@ -157,8 +157,8 @@ class AccountMove(models.Model):
                         
                         if rounding:
                             vals['cash_rounding_id'] = rounding.id
-                except Exception as re:
-                    _logger.warning("Nepavyko pritaikyti apvalinimo: %s", str(re))
+                except Exception as e:
+                    _logger.warning("Nepavyko pritaikyti apvalinimo: %s", str(e))
 
             # 4. Automobilio paieška pagal numerį
             vehicle_id = False
