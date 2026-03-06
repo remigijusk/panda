@@ -50,8 +50,8 @@ class AccountMove(models.Model):
         5. quantity: liters (L).
         6. unit_price: price per liter.
         7. rounding_amount: Look for "Apvalinimas", "Grynųjų apvalinimas" or "Rounding".
-        8. has_rounding: Return true if you see words like "Apvalinimas" or "Rounding".
-        9. payment_method: Detect if it's "Grynais" (cash) or "Kortele" (card). Look for "Grynais", "Cash", "Kortelė", "Card", "Visa", "Mastercard".
+        8. has_rounding: Return true if you see words like "Apvalinimas" or "Rounding" or specific rounding values like "+0,01", "-0,02".
+        9. payment_method: Detect if it's "Grynais" (cash) or "Kortele" (card). Look for "Grynieji", "Mokėta grynais", "Cash", "Kortelė", "Card", "Visa", "Mastercard".
         
         JSON Structure:
         {
@@ -154,23 +154,32 @@ class AccountMove(models.Model):
                         rounding_raw = rounding_raw.replace(',', '.')
                     
                     rounding_val = float(rounding_raw or 0)
+                    total_with_vat = float(data.get('total_with_vat', 0))
                     
-                    # Jei AI rado apvalinimą ARBA tai mokėjimas grynais (kur privalomas apvalinimas)
-                    if has_rounding or abs(rounding_val) > 0 or payment_method == 'cash':
-                        _logger.info("Bandoma pritaikyti apvalinimą. Metodas: %s, Suma: %s", payment_method, rounding_val)
+                    # MATEMATINIS SAUGIKLIS: Jei suma nesibaigia 0 arba 5 ir tai grynieji - privalomas apvalinimas
+                    is_math_rounding = False
+                    if total_with_vat > 0 and payment_method == 'cash':
+                        cents = round((total_with_vat * 100) % 5, 2)
+                        if cents != 0:
+                            is_math_rounding = True
+                            _logger.info("Matematiškai aptiktas apvalinimo poreikis (Suma: %s)", total_with_vat)
+                    
+                    # Jei AI rado apvalinimą ARBA tai mokėjimas grynais ARBA matematiškai reikia
+                    if has_rounding or abs(rounding_val) > 0 or payment_method == 'cash' or is_math_rounding:
+                        _logger.info("Bandoma pritaikyti apvalinimą. Metodas: %s, Suma: %s, Math: %s", payment_method, rounding_val, is_math_rounding)
                         
-                        # 1. Ieškome pagal pavadinimą (prioritetas jūsų 'Up') - naudojam sudo() ir ilike
+                        # 1. PRIORITETAS: Ieškome bet kurios taisyklės su 0.05 tikslumu (tai standartas Lietuvai)
                         rounding = self.env['account.cash.rounding'].sudo().search([
-                            ('name', 'ilike', 'up')
+                            ('rounding', '=', 0.05)
                         ], limit=1)
                         
-                        # 2. Jei neradom 'Up', ieškom bet ko su 0.05 tikslumu
+                        # 2. Jei neradom pagal vertę, ieškom pagal pavadinimą 'Up'
                         if not rounding:
                             rounding = self.env['account.cash.rounding'].sudo().search([
-                                ('rounding', '=', 0.05)
+                                ('name', 'ilike', 'up')
                             ], limit=1)
                             
-                        # 3. Jei vis tiek neradom, ieškom pagal kitus galimus pavadinimus
+                        # 3. Jei vis tiek neradom, ieškom pagal žodį 'apvalinimas'
                         if not rounding:
                             rounding = self.env['account.cash.rounding'].sudo().search([
                                 ('name', 'ilike', 'apvalinimas')
