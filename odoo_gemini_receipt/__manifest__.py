@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Gemini AI Receipt Scanner (Odoo 18)',
-    'version': '18.0.1.0.6',
+    'version': '18.0.1.0.7',
     'category': 'Accounting',
-    'summary': 'Auksinis paketas: AI powered receipt scanning with Vehicle detection',
-    'description': 'PILNAS ATNAUJINIMAS: Automatinis kvitų nuskaitymas su teisingu kainos be PVM skaičiavimu (Suma be PVM / Kiekis).',
+    'summary': 'Auksinis paketas: AI powered receipt scanning with Vehicle detection & Cash Rounding',
+    'description': 'PILNAS ATNAUJINIMAS: Teisingas kainos be PVM skaičiavimas ir grynųjų pinigų apvalinimo (Cash Rounding) palaikymas nuo 2025 m.',
     'author': 'Remigijus',
     'depends': ['account', 'base', 'fleet'],
     'data': [
