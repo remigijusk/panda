@@ -49,8 +49,8 @@ class AccountMove(models.Model):
         4. total_with_vat: Look for "Su PVM" or "Mokėti".
         5. quantity: liters (L).
         6. unit_price: price per liter.
-        7. rounding_amount: Look for "Apvalinimas", "Grynųjų apvalinimas" or "Rounding".
-        8. has_rounding: Return true if you see words like "Apvalinimas" or "Rounding" or specific rounding values like "+0,01", "-0,02".
+        7. rounding_amount: Look for "Apvalinimas", "Grynųjų apvalinimas" or "Rounding". Extract the numeric value (e.g., -0.02 or 0.01).
+        8. has_rounding: MANDATORY: If you see the word "Apvalinimas" or "Rounding" anywhere on the receipt, set this to true.
         9. payment_method: Detect if it's "Grynais" (cash) or "Kortele" (card). Look for "Grynieji", "Mokėta grynais", "Cash", "Kortelė", "Card", "Visa", "Mastercard".
         
         JSON Structure:
@@ -164,19 +164,19 @@ class AccountMove(models.Model):
                             is_math_rounding = True
                             _logger.info("Matematiškai aptiktas apvalinimo poreikis (Suma: %s)", total_with_vat)
                     
-                    # Jei AI rado apvalinimą ARBA tai mokėjimas grynais ARBA matematiškai reikia
+                    # Jei AI rado apvalinimą ARBA tai mokėjimas grynais ARBA matematiškai reikia ARBA tiesiog yra apvalinimo suma
                     if has_rounding or abs(rounding_val) > 0 or payment_method == 'cash' or is_math_rounding:
                         _logger.info("Bandoma pritaikyti apvalinimą. Metodas: %s, Suma: %s, Math: %s", payment_method, rounding_val, is_math_rounding)
                         
-                        # 1. PRIORITETAS: Ieškome bet kurios taisyklės su 0.05 tikslumu (tai standartas Lietuvai)
+                        # 1. PRIORITETAS: Pagal pavadinimą 'Up' (kaip prašė vartotojas)
                         rounding = self.env['account.cash.rounding'].sudo().search([
-                            ('rounding', '=', 0.05)
+                            ('name', '=ilike', 'Up')
                         ], limit=1)
                         
-                        # 2. Jei neradom pagal vertę, ieškom pagal pavadinimą 'Up'
+                        # 2. Jei neradom 'Up', ieškom bet ko su 0.05 tikslumu
                         if not rounding:
                             rounding = self.env['account.cash.rounding'].sudo().search([
-                                ('name', 'ilike', 'up')
+                                ('rounding', '=', 0.05)
                             ], limit=1)
                             
                         # 3. Jei vis tiek neradom, ieškom pagal žodį 'apvalinimas'
