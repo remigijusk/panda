@@ -44,9 +44,9 @@ class AccountMove(models.Model):
         prompt = """Extract data from this receipt and return it ONLY in JSON format.
         IMPORTANT: 
         1. Look for any HANDWRITTEN text on the receipt (usually vehicle plate numbers).
-        2. vendor_vat is the VAT number of the seller (e.g. LT114549113).
-        3. total_without_vat: Look for "Be PVM" or "Mokestis A Be PVM". This is the taxable base.
-        4. total_with_vat: Look for "Mokėti" or "Su PVM". This is the final total.
+        2. vendor_vat: Seller's VAT number (e.g. LT100010288216).
+        3. total_without_vat: Look for "Be PVM". This is the taxable base.
+        4. total_with_vat: Look for "Su PVM" or "Mokėti".
         5. quantity: liters (L).
         6. unit_price: price per liter.
         7. rounding_amount: Look for "Apvalinimas".
@@ -139,16 +139,23 @@ class AccountMove(models.Model):
                 quantity = 1.0
 
             # 3.1 Grynųjų pinigų apvalinimas (nuo 2025 m.)
-            if data.get('rounding_amount') and abs(float(data['rounding_amount'])) > 0:
-                # Patikriname ar laukas egzistuoja modelyje
-                if 'cash_rounding_id' in self._fields:
-                    rounding = self.env['account.cash.rounding'].search([
-                        '|', ('name', '=', 'Up'),
-                        '|', ('name', 'ilike', 'apvalinimas'),
-                        ('rounding', '=', 0.05)
-                    ], limit=1)
+            try:
+                rounding_val = data.get('rounding_amount', 0)
+                if rounding_val and abs(float(rounding_val)) > 0:
+                    # Ieškome taisyklės pavadinimu 'Up' (kaip nurodė vartotojas)
+                    rounding = self.env['account.cash.rounding'].search([('name', '=', 'Up')], limit=1)
+                    if not rounding:
+                        rounding = self.env['account.cash.rounding'].search([
+                            '|', ('name', 'ilike', 'apvalinimas'),
+                            ('rounding', '=', 0.05)
+                        ], limit=1)
+                    
                     if rounding:
-                        vals['cash_rounding_id'] = rounding.id
+                        # Patikriname ar laukas egzistuoja saugesniu būdu
+                        if hasattr(self, 'cash_rounding_id'):
+                            vals['cash_rounding_id'] = rounding.id
+            except Exception as re:
+                _logger.warning("Nepavyko pritaikyti apvalinimo: %s", str(re))
 
             # 4. Automobilio paieška pagal numerį
             vehicle_id = False
