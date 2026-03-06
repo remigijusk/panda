@@ -50,7 +50,8 @@ class AccountMove(models.Model):
         5. quantity: liters (L).
         6. unit_price: price per liter.
         7. rounding_amount: Look for "Apvalinimas", "Grynųjų apvalinimas" or "Rounding".
-        8. has_rounding: Return true if you see words like "Apvalinimas" or "Rounding" on the receipt.
+        8. has_rounding: Return true if you see words like "Apvalinimas" or "Rounding".
+        9. payment_method: Detect if it's "Grynais" (cash) or "Kortele" (card).
         
         JSON Structure:
         {
@@ -63,6 +64,7 @@ class AccountMove(models.Model):
             "unit_price": 0.00,
             "rounding_amount": 0.00,
             "has_rounding": false,
+            "payment_method": "cash|card|unknown",
             "receipt_number": "string",
             "vehicle_plate": "string"
         }"""
@@ -145,24 +147,41 @@ class AccountMove(models.Model):
                 try:
                     rounding_raw = data.get('rounding_amount', 0)
                     has_rounding = data.get('has_rounding', False)
+                    payment_method = data.get('payment_method', 'unknown')
                     
                     if isinstance(rounding_raw, str):
                         rounding_raw = rounding_raw.replace(',', '.')
                     
                     rounding_val = float(rounding_raw or 0)
                     
-                    # Jei AI rado apvalinimo sumą ARBA tiesiog žodį "Apvalinimas"
-                    if has_rounding or abs(rounding_val) > 0:
-                        # Prioritetas metodui pavadinimu 'Up'
-                        rounding = self.env['account.cash.rounding'].search([('name', '=', 'Up')], limit=1)
+                    # Jei AI rado apvalinimą ARBA tai mokėjimas grynais (kur privalomas apvalinimas)
+                    if has_rounding or abs(rounding_val) > 0 or payment_method == 'cash':
+                        _logger.info("Bandoma pritaikyti apvalinimą. Metodas: %s, Suma: %s", payment_method, rounding_val)
+                        
+                        # 1. Ieškome pagal pavadinimą (prioritetas jūsų 'Up') - naudojam =ilike saugumui
+                        rounding = self.env['account.cash.rounding'].search([
+                            ('name', '=ilike', 'Up')
+                        ], limit=1)
+                        
+                        # 2. Jei neradom 'Up', ieškom bet ko su 0.05 tikslumu
                         if not rounding:
                             rounding = self.env['account.cash.rounding'].search([
-                                '|', ('name', 'ilike', 'apvalinimas'),
                                 ('rounding', '=', 0.05)
                             ], limit=1)
+                            
+                        # 3. Jei vis tiek neradom, ieškom pagal kitus galimus pavadinimus
+                        if not rounding:
+                            rounding = self.env['account.cash.rounding'].search([
+                                ('name', 'ilike', 'apvalinimas')
+                            ], limit=1)
+                        
+                        # 4. Galiausiai imam bet kokią taisyklę
+                        if not rounding:
+                            rounding = self.env['account.cash.rounding'].search([], limit=1)
                         
                         if rounding:
                             vals['cash_rounding_id'] = rounding.id
+                            _logger.info("Rasta apvalinimo taisyklė: %s (ID: %s)", rounding.name, rounding.id)
                 except Exception as e:
                     _logger.warning("Nepavyko pritaikyti apvalinimo: %s", str(e))
 
@@ -218,8 +237,10 @@ class AccountMove(models.Model):
             self.write(vals)
             
             msg = _("Sėkmingai nuskaityta: %s") % data.get('vendor_name', 'Nežinomas')
+            if vals.get('cash_rounding_id'):
+                msg += _(" + Apvalinimas")
             if vehicle_id:
-                msg += _(" (Automobilis: %s)") % plate_for_msg
+                msg += _(" (Auto: %s)") % plate_for_msg
 
             return {
                 'effect': {
