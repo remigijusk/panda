@@ -118,19 +118,15 @@ class AccountMove(models.Model):
             if data.get('receipt_number'):
                 vals['ref'] = data['receipt_number']
 
-            # 3. Kiekio ir kainos logika (Sustiprinimas)
+            # 3. Kiekio ir kainos logika (Odoo 15 principas: Suma be PVM / Kiekis)
             quantity = float(data.get('quantity', 0))
-            unit_price = float(data.get('unit_price', 0))
             total_no_vat = float(data.get('total_without_vat', 0))
-
-            # Heuristika: jei kiekis mažesnis už kainą (pvz. 1.45 ltr už 70 eur), greičiausiai jie sumaišyti
-            if quantity > 0 and unit_price > 0 and quantity < unit_price:
-                # Sukeičiame vietomis, nes kuras paprastai perkamas litrais (didelis skaičius), o kaina yra maža
-                quantity, unit_price = unit_price, quantity
             
-            # Jei AI negrąžino unit_price, bet turime sumą ir kiekį
-            if unit_price == 0 and quantity > 0:
+            if quantity > 0:
                 unit_price = total_no_vat / quantity
+            else:
+                unit_price = total_no_vat
+                quantity = 1.0
 
             # 4. Automobilio paieška pagal numerį
             vehicle_id = False
