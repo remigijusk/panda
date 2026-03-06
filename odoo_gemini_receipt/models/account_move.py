@@ -49,7 +49,8 @@ class AccountMove(models.Model):
         4. total_with_vat: Look for "Su PVM" or "Mokėti".
         5. quantity: liters (L).
         6. unit_price: price per liter.
-        7. rounding_amount: Look for "Apvalinimas".
+        7. rounding_amount: Look for "Apvalinimas", "Grynųjų apvalinimas" or "Rounding".
+        8. has_rounding: Return true if you see words like "Apvalinimas" or "Rounding" on the receipt.
         
         JSON Structure:
         {
@@ -61,6 +62,7 @@ class AccountMove(models.Model):
             "quantity": 0.00,
             "unit_price": 0.00,
             "rounding_amount": 0.00,
+            "has_rounding": false,
             "receipt_number": "string",
             "vehicle_plate": "string"
         }"""
@@ -142,11 +144,15 @@ class AccountMove(models.Model):
             if 'cash_rounding_id' in self._fields:
                 try:
                     rounding_raw = data.get('rounding_amount', 0)
+                    has_rounding = data.get('has_rounding', False)
+                    
                     if isinstance(rounding_raw, str):
                         rounding_raw = rounding_raw.replace(',', '.')
                     
                     rounding_val = float(rounding_raw or 0)
-                    if abs(rounding_val) > 0:
+                    
+                    # Jei AI rado apvalinimo sumą ARBA tiesiog žodį "Apvalinimas"
+                    if has_rounding or abs(rounding_val) > 0:
                         # Prioritetas metodui pavadinimu 'Up'
                         rounding = self.env['account.cash.rounding'].search([('name', '=', 'Up')], limit=1)
                         if not rounding:
