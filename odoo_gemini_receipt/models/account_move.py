@@ -139,23 +139,26 @@ class AccountMove(models.Model):
                 quantity = 1.0
 
             # 3.1 Grynųjų pinigų apvalinimas (nuo 2025 m.)
-            try:
-                rounding_val = data.get('rounding_amount', 0)
-                if rounding_val and abs(float(rounding_val)) > 0:
-                    # Ieškome taisyklės pavadinimu 'Up' (kaip nurodė vartotojas)
-                    rounding = self.env['account.cash.rounding'].search([('name', '=', 'Up')], limit=1)
-                    if not rounding:
-                        rounding = self.env['account.cash.rounding'].search([
-                            '|', ('name', 'ilike', 'apvalinimas'),
-                            ('rounding', '=', 0.05)
-                        ], limit=1)
+            if 'cash_rounding_id' in self._fields:
+                try:
+                    rounding_raw = data.get('rounding_amount', 0)
+                    if isinstance(rounding_raw, str):
+                        rounding_raw = rounding_raw.replace(',', '.')
                     
-                    if rounding:
-                        # Patikriname ar laukas egzistuoja saugesniu būdu
-                        if hasattr(self, 'cash_rounding_id'):
+                    rounding_val = float(rounding_raw or 0)
+                    if abs(rounding_val) > 0:
+                        # Prioritetas metodui pavadinimu 'Up'
+                        rounding = self.env['account.cash.rounding'].search([('name', '=', 'Up')], limit=1)
+                        if not rounding:
+                            rounding = self.env['account.cash.rounding'].search([
+                                '|', ('name', 'ilike', 'apvalinimas'),
+                                ('rounding', '=', 0.05)
+                            ], limit=1)
+                        
+                        if rounding:
                             vals['cash_rounding_id'] = rounding.id
-            except Exception as re:
-                _logger.warning("Nepavyko pritaikyti apvalinimo: %s", str(re))
+                except Exception as re:
+                    _logger.warning("Nepavyko pritaikyti apvalinimo: %s", str(re))
 
             # 4. Automobilio paieška pagal numerį
             vehicle_id = False
