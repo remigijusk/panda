@@ -43,11 +43,12 @@ class AccountMove(models.Model):
         
         prompt = """Extract data from this receipt and return it ONLY in JSON format.
         IMPORTANT: 
-        1. Look for any HANDWRITTEN text on the receipt (usually written with a pen). 
-        2. Specifically look for vehicle plate numbers (e.g., HTT570, HTT 570).
-        3. vendor_name is the SELLER (e.g. Viada, Circle K).
-        4. vendor_vat is the VAT number of the seller (e.g. LT114549113).
+        1. Look for any HANDWRITTEN text on the receipt (usually vehicle plate numbers).
+        2. vendor_vat is the VAT number of the seller (e.g. LT114549113).
+        3. total_without_vat is the sum of all items EXCLUDING VAT (Be PVM).
+        4. total_with_vat is the final amount to pay (Su PVM / Mokėti).
         5. quantity is liters, unit_price is price per liter.
+        6. rounding_amount: if there is "Apvalinimas" (cash rounding), extract its value.
         
         JSON Structure:
         {
@@ -55,8 +56,10 @@ class AccountMove(models.Model):
             "vendor_vat": "string",
             "date": "YYYY-MM-DD",
             "total_without_vat": 0.00,
+            "total_with_vat": 0.00,
             "quantity": 0.00,
             "unit_price": 0.00,
+            "rounding_amount": 0.00,
             "receipt_number": "string",
             "vehicle_plate": "string"
         }"""
@@ -122,11 +125,26 @@ class AccountMove(models.Model):
             quantity = float(data.get('quantity', 0))
             total_no_vat = float(data.get('total_without_vat', 0))
             
+            # Jei AI suklydo ir paėmė sumą su PVM kaip sumą be PVM (dažna klaida)
+            total_with_vat = float(data.get('total_with_vat', 0))
+            if total_no_vat == total_with_vat and total_no_vat > 0:
+                # Perskaičiuojame atgal: Suma su PVM / 1.21
+                total_no_vat = total_no_vat / 1.21
+
             if quantity > 0:
                 unit_price = total_no_vat / quantity
             else:
                 unit_price = total_no_vat
                 quantity = 1.0
+
+            # 3.1 Grynųjų pinigų apvalinimas (nuo 2025 m.)
+            if data.get('rounding_amount') and abs(float(data['rounding_amount'])) > 0:
+                rounding = self.env['account.cash.rounding'].search([
+                    '|', ('name', 'ilike', 'apvalinimas'),
+                    ('rounding', '=', 0.05)
+                ], limit=1)
+                if rounding:
+                    vals['cash_rounding_id'] = rounding.id
 
             # 4. Automobilio paieška pagal numerį
             vehicle_id = False
