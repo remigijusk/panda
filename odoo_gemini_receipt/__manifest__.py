@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Gemini AI Receipt Scanner (Odoo 18)',
-    'version': '18.0.1.0.15',
+    'version': '18.0.1.0.16',
     'category': 'Accounting',
     'summary': 'Auksinis paketas: AI powered receipt scanning with Vehicle detection & Cash Rounding',
-    'description': 'PILNAS ATNAUJINIMAS: Maksimaliai sustiprinta apvalinimo paieška ir vizualus patvirtinimas.',
+    'description': 'PILNAS ATNAUJINIMAS: Maksimaliai sustiprinta apvalinimo paieška su sudo() ir detaliu logavimu.',
     'author': 'Remigijus',
     'depends': ['account', 'base', 'fleet'],
     'data': [
