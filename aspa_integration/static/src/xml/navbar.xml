@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="aspa_integration.Navbar" t-inherit="point_of_sale.Navbar" t-inherit-mode="extension">
+        <xpath expr="//DropdownItem[contains(text(), 'Debug')]" position="after">
+            <DropdownItem onSelected="() => this.pos.printXreport()">
+                X report
+            </DropdownItem>
+<!--            <DropdownItem onSelected="() => this.pos.printZreport()">-->
+<!--                Z report-->
+<!--            </DropdownItem>-->
+        </xpath>
+    </t>
+
+    <t t-name="aspa_integration.ControlButtons" t-inherit="point_of_sale.ControlButtons" t-inherit-mode="extension">
+        <xpath expr="//OrderlineNoteButton[@label='internalNoteLabel()']" position="after">
+            <button class="btn btn-lg bg-white py-2" t-on-click="() => this.pos.onClickWeigh()" t-att-disabled="this.pos.get_order().is_empty()">
+                <i class="fa fa-balance-scale" role="img" aria-label="Weight"/>
+            </button>
+        </xpath>
+    </t>
+</templates>
