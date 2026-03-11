@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="npd_onboarding_form" inherit_id="hr.hr_employee_personal_info" priority="50">
+        <xpath expr="//form" position="inside">
+            <div class="row mt-4">
+                <div class="col-12">
+                    <h4 class="mb-3 text-primary">Lietuvos Mokesčiai (NPD)</h4>
+                    <div class="form-group mb-3">
+                        <label class="form-label fw-bold" for="npd_taikymas">Ar taikyti NPD?</label>
+                        <select name="npd_taikymas" id="npd_taikymas" class="form-select">
+                            <option value="netaikyti">Netaikyti NPD</option>
+                            <option value="taikyti">Taikyti NPD</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="form-label fw-bold" for="npd_data">NPD Taikymo Data (nuo kada)</label>
+                        <input type="date" name="npd_data" id="npd_data" class="form-control"/>
+                    </div>
+                </div>
+            </div>
+        </xpath>
+    </template>
+</odoo>
