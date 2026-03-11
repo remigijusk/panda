@@ -8,12 +8,11 @@
             <xpath expr="//notebook" position="inside">
                 <page string="NPD (Tutas)" name="npd_tutas_page">
                     <group>
-                        <group string="NPD nustatymai">
+                        <group string="NPD Nustatymai">
                             <field name="x_is_npd_applied"/>
                             <field name="x_is_fixed_npd"/>
                         </group>
                         <group string="Papildoma informacija">
-                            <field name="npd_taikymas"/>
                             <field name="npd_data"/>
                             <field name="npd_suma"/>
                         </group>
