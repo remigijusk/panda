@@ -1,6 +1,6 @@
 {
     'name': 'LT Darbo Apskaita: NPD (Tutas)',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.1.1',
     'category': 'Human Resources',
     'summary': 'NPD taikymo laukeliai darbuotojo kortelėje ir savitarnoje',
     'author': 'Remigijus Kubilius',
