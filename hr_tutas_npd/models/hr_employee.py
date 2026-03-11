@@ -3,11 +3,11 @@ from odoo import models, fields
 class HrEmployee(models.Model):
     _inherit = 'hr.employee'
 
-    # Oficialūs modulio laukeliai
+    # Nauji loginiai laukeliai (Checkbox)
     x_is_npd_applied = fields.Boolean(string='Taikyti NPD')
     x_is_fixed_npd = fields.Boolean(string='Fiksuotas NPD')
 
-    # Jūsų anksčiau naudoti papildomi laukeliai (paliekame dėl saugumo)
+    # Senieji laukeliai (jei reikia istorijai)
     npd_taikymas = fields.Selection([
         ('taikyti', 'Taikyti NPD'),
         ('netaikyti', 'Netaikyti NPD')
