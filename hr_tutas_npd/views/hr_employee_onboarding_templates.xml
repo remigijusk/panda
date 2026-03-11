@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <template id="hr_employee_personal_info_npd" inherit_id="hr.hr_employee_personal_info_template">
+    <template id="hr_employee_personal_info_npd" inherit_id="hr.hr_employee_personal_info">
         <xpath expr="//div[hasclass('o_hr_employee_onboarding_form')]" position="inside">
             <div class="mt-4 border-top pt-4">
                 <h4>NPD Taikymas</h4>
