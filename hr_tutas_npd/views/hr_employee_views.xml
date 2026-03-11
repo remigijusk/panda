@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_employee_form_inherit_npd_tutas" model="ir.ui.view">
-        <field name="name">hr.employee.form.inherit.npd.tutas</field>
+    <record id="view_employee_form_inherit_npd_universal" model="ir.ui.view">
+        <field name="name">hr.employee.form.inherit.npd</field>
         <field name="model">hr.employee</field>
         <field name="inherit_id" ref="hr.view_employee_form"/>
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
-                <page string="NPD (Tutas)" name="npd_tutas_page">
+                <page string="NPD" name="npd_page">
                     <group>
                         <group string="NPD Nustatymai">
                             <field name="x_is_npd_applied"/>
@@ -18,6 +18,19 @@
                         </group>
                     </group>
                 </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_employee_filter_inherit_npd" model="ir.ui.view">
+        <field name="name">hr.employee.search.inherit.npd</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='group_job']" position="after">
+                <separator/>
+                <filter string="Taikomas NPD" name="filter_npd_applied" domain="[('x_is_npd_applied', '=', True)]"/>
+                <filter string="Fiksuotas NPD" name="filter_npd_fixed" domain="[('x_is_fixed_npd', '=', True)]"/>
             </xpath>
         </field>
     </record>
