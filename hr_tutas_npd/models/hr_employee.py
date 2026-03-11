@@ -3,12 +3,14 @@ from odoo import models, fields
 class HrEmployee(models.Model):
     _inherit = 'hr.employee'
 
+    # Šitie laukeliai dabar sukuriami per kodą
+    x_is_npd_applied = fields.Boolean(string='Taikyti NPD')
+    x_is_fixed_npd = fields.Boolean(string='Fiksuotas NPD')
+    
+    # Paliekame ir senus, jei juos naudojote
     npd_taikymas = fields.Selection([
         ('taikyti', 'Taikyti NPD'),
         ('netaikyti', 'Netaikyti NPD')
-    ], string='NPD Pasirinkimas', default='netaikyti', tracking=True)
-    
-    npd_data = fields.Date(string='NPD Taikymo Data', tracking=True)
-    
-    npd_suma = fields.Float(string='Individuali NPD Suma', 
-                            help='Pildyti tik jei taikoma nestandartinė suma')
+    ], string='NPD Pasirinkimas', default='netaikyti')
+    npd_data = fields.Date(string='NPD Taikymo Data')
+    npd_suma = fields.Float(string='Individuali NPD Suma')
