@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_employee_form_inherit_npd" model="ir.ui.view">
-        <field name="name">hr.employee.form.inherit.npd</field>
+    <record id="view_employee_form_inherit_npd_tutas" model="ir.ui.view">
+        <field name="name">hr.employee.form.inherit.npd.tutas</field>
         <field name="model">hr.employee</field>
         <field name="inherit_id" ref="hr.view_employee_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//page[@name='personal_information']/group" position="inside">
-                <group string="Lietuvos Mokesčiai (NPD)">
-                    <field name="npd_taikymas" widget="radio"/>
-                    <field name="npd_data" invisible="npd_taikymas == 'netaikyti'"/>
-                    <field name="npd_suma" invisible="npd_taikymas == 'netaikyti'"/>
+            <xpath expr="//page[@name='personal_information']" position="inside">
+                <group string="NPD nustatymai (Tutas)">
+                    <field name="x_is_npd_applied"/>
+                    <field name="x_is_fixed_npd"/>
                 </group>
             </xpath>
         </field>
