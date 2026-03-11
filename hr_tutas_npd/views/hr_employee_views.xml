@@ -5,11 +5,9 @@
         <field name="model">hr.employee</field>
         <field name="inherit_id" ref="hr.view_employee_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//page[@name='personal_information']" position="inside">
-                <group string="NPD nustatymai (Tutas)">
-                    <field name="x_is_npd_applied"/>
-                    <field name="x_is_fixed_npd"/>
-                </group>
+            <xpath expr="//field[@name='bank_account_id']" position="after">
+                <field name="x_is_npd_applied"/>
+                <field name="x_is_fixed_npd"/>
             </xpath>
         </field>
     </record>
