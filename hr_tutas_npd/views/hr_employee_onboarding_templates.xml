@@ -8,17 +8,13 @@
                     <div class="col-md-6">
                         <div class="form-check m-3">
                             <input class="form-check-input" type="checkbox" name="x_is_npd_applied" id="x_is_npd_applied"/>
-                            <label class="form-check-label" for="x_is_npd_applied">
-                                Taikyti NPD
-                            </label>
+                            <label class="form-check-label" for="x_is_npd_applied">Taikyti NPD</label>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-check m-3">
                             <input class="form-check-input" type="checkbox" name="x_is_fixed_npd" id="x_is_fixed_npd"/>
-                            <label class="form-check-label" for="x_is_fixed_npd">
-                                Fiksuotas NPD
-                            </label>
+                            <label class="form-check-label" for="x_is_fixed_npd">Fiksuotas NPD</label>
                         </div>
                     </div>
                 </div>
