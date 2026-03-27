@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.pos_nsoft_fiscal</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="point_of_sale.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@id='pos_accounting_section']" position="after">
+                <block title="nSoft Virtuali Fiskalizacija (i.EKA)" id="pos_nsoft_fiscal_section">
+                    <setting string="API Nustatymai" help="nVirtualFiscal prisijungimo duomenys">
+                        <div class="content-group">
+                            <div class="row mt16">
+                                <label for="pos_nsoft_api_url" class="col-lg-3 o_light_label"/>
+                                <field name="pos_nsoft_api_url" class="col-lg-9"/>
+                            </div>
+                            <div class="row mt16">
+                                <label for="pos_nsoft_pos_id" class="col-lg-3 o_light_label"/>
+                                <field name="pos_nsoft_pos_id" class="col-lg-9"/>
+                            </div>
+                            <div class="row mt16">
+                                <label for="pos_nsoft_api_token" class="col-lg-3 o_light_label"/>
+                                <field name="pos_nsoft_api_token" class="col-lg-9" password="True"/>
+                            </div>
+                            <div class="row mt16">
+                                <button name="action_test_nsoft_connection" type="object" string="Testuoti ryšį" class="btn-primary" icon="fa-wifi"/>
+                            </div>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>
