@@ -7,22 +7,24 @@ patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
         const order = this.currentOrder || this.pos.get_order();
         
-        // Surenkame duomenis (Universalus būdas)
-        const lines = order.get_orderlines().map(l => [0, 0, {
-            full_product_name: l.product.display_name,
-            qty: l.get_quantity(),
-            price_unit: l.get_unit_price(),
-            price_subtotal_incl: l.get_price_with_tax(),
+        // 1. DUOMENŲ SURINKIMAS (Odoo 19 tiesioginis būdas)
+        // Odoo 19 naudoja tiesiog .lines, .qty, .price_unit ir t.t.
+        const raw_lines = order.lines || [];
+        const lines = raw_lines.map(l => [0, 0, {
+            full_product_name: l.product_name || l.product?.display_name || "Prekė",
+            qty: l.qty || 0,
+            price_unit: l.price_unit || 0,
+            price_subtotal_incl: l.price_subtotal_incl || 0,
         }]);
 
         const orderData = {
             lines: lines,
-            amount_total: order.get_total_with_tax(),
+            amount_total: order.amount_total || 0,
             name: order.name
         };
 
         try {
-            // 1. Siunčiame į serverį/nSoft
+            // 2. Kreipiamės į Python variklį
             const result = await this.env.services.orm.call(
                 'pos.order',
                 'action_send_receipt_to_nsoft',
@@ -30,11 +32,10 @@ patch(PaymentScreen.prototype, {
             );
 
             if (result && result.success) {
-                // 2. IŠSAUGOME ID: Šis žingsnis dabar gudresnis. 
-                // Mes tiesiog prikabiname ID prie užsakymo, kad Odoo jį nusiųstų automatiškai.
+                // Išsaugome ID atmintyje
                 order.nsoft_id = result.receipt_id;
                 
-                // Priverčiame Odoo įtraukti šį ID į galutinį siuntimą
+                // Prikabiname ID prie galutinio JSON siuntimo
                 const original_json = order.export_as_JSON;
                 order.export_as_JSON = function() {
                     const json = original_json.apply(this, arguments);
@@ -42,6 +43,7 @@ patch(PaymentScreen.prototype, {
                     return json;
                 };
 
+                // Viskas gerai, tęsiame
                 return super.validateOrder(isForceValidate);
             } else {
                 this.env.services.dialog.add(AlertDialog, {
@@ -51,9 +53,10 @@ patch(PaymentScreen.prototype, {
                 return false;
             }
         } catch (error) {
+            console.error("nSoft modulis pagavo klaidą:", error);
             this.env.services.dialog.add(AlertDialog, {
-                title: "Ryšio klaida",
-                body: "Nepavyko susisiekti su Odoo serveriu.",
+                title: "Sistemos klaida",
+                body: "Įvyko klaida apdorojant kvitą. Patikrinkite naršyklės konsolę.",
             });
             return false;
         }
