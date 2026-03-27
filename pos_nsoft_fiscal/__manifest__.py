@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.7.0',
+    'version': '19.0.1.8.0',
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'depends': ['point_of_sale'],
@@ -14,4 +14,5 @@
             'pos_nsoft_fiscal/static/src/js/payment_screen.js',
         ],
     },
+    'license': 'LGPL-3',
 }
