@@ -8,6 +8,7 @@ _logger = logging.getLogger(__name__)
 class PosOrder(models.Model):
     _inherit = 'pos.order'
 
+    @api.model
     def action_send_receipt_to_nsoft(self, order_data):
         """
         Priima POS užsakymo duomenis ir išsiunčia POST užklausą į nSoft API /cr/{id}/receipt.
