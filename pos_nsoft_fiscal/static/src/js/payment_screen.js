@@ -1,12 +1,12 @@
 /** @odoo-module */
 import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
 import { patch } from "@web/core/utils/patch";
-import { ErrorPopup } from "@point_of_sale/app/errors/popups/error_popup";
+import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 
 patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
-        // 1. Paimame krepšelio duomenis
-        const order = this.pos.get_order();
+        // 1. Paimame krepšelio duomenis (Odoo 19 formatu)
+        const order = this.currentOrder || this.pos.get_order();
         const orderData = order.export_as_JSON();
 
         try {
@@ -24,7 +24,7 @@ patch(PaymentScreen.prototype, {
             } else {
                 // KLAIDA: nSoft atmetė kvitą (pvz. blogas PVM, nerastas ID ir pan.)
                 const errorMessage = result && result.error ? result.error : "Nežinoma klaida iš i.EKA.";
-                this.env.services.popup.add(ErrorPopup, {
+                this.env.services.dialog.add(AlertDialog, {
                     title: "Fiskalizacijos klaida",
                     body: errorMessage,
                 });
@@ -32,7 +32,7 @@ patch(PaymentScreen.prototype, {
             }
         } catch (error) {
             // TINKLO KLAIDA: Dingo internetas tarp kasos ir serverio
-            this.env.services.popup.add(ErrorPopup, {
+            this.env.services.dialog.add(AlertDialog, {
                 title: "Ryšio klaida (Offline)",
                 body: "Nepavyko susisiekti su serveriu. Darbas be interneto yra draudžiamas.",
             });
