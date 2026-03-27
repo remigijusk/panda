@@ -5,9 +5,9 @@ import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 
 patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
-        // 1. Paimame krepšelio duomenis (Odoo 19 formatu)
+        // 1. Paimame krepšelio duomenis (Odoo 19 naudoja .serialize())
         const order = this.currentOrder || this.pos.get_order();
-        const orderData = order.export_as_JSON();
+        const orderData = order.serialize();
 
         try {
             // 2. Siunčiame duomenis į mūsų Python funkciją serveryje
