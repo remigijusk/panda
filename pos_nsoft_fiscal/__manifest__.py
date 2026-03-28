@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.9.0',
+    'version': '19.0.1.10.0',
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'description': """
         Modulis skirtas Odoo 19 POS integracijai su nSoft virtualia fiskalizacija.
-        v1.9.0: Pilnai Reactive JS duomenų surinkimas be get_orderlines().
+        v1.10.0: Sutvarkytas kainų ištraukimas iš Reactive modelių.
     """,
     'depends': ['point_of_sale'],
     'data': [
