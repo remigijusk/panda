@@ -22,48 +22,49 @@ class PosOrder(models.Model):
 
         # 1. Formuojame pardavimo eilutes
         sales = []
-        total_sales_amount = 0.0
+        total_sales_incl = 0.0
         for l in order_data.get('lines', []):
-            line_amount = round(l.get('total', 0), 2)
+            amt = round(l.get('total', 0), 2)
             sales.append({
                 'description': l.get('name', 'Prekė'),
                 'quantity': round(l.get('qty', 0), 3),
                 'unitPrice': round(l.get('price', 0), 2),
-                'lineAmount': line_amount,
+                'lineAmount': amt,
                 'vatCode': 'A'
             })
-            total_sales_amount += line_amount
+            total_sales_incl += amt
         
-        total_sales_amount = round(total_sales_amount, 2)
+        total_sales_incl = round(total_sales_incl, 2)
 
-        # 2. APDOROJAME MOKĖJIMUS (Sutvarkome Grąžos problemą)
-        # nSoft reikalauja, kad mokėjimų suma būtų LYGI pardavimų sumai.
+        # 2. Formuojame mokėjimus (Sutvarkome Grąžos ir Metodo problemas)
         processed_payments = []
-        current_payments_sum = 0.0
+        remaining_to_pay = total_sales_incl
         raw_payments = order_data.get('payments', [])
 
         for p in raw_payments:
+            if remaining_to_pay <= 0:
+                break
+                
             p_amount = round(p.get('amount', 0), 2)
-            
-            # Jei šis mokėjimas viršija likusią mokėtiną sumą (tai yra grąža)
-            if round(current_payments_sum + p_amount, 2) > total_sales_amount:
-                p_amount = round(total_sales_amount - current_payments_sum, 2)
+            # Jei mokėjimas didesnis nei likusi krepšelio suma (grąža) - apkerpame
+            if p_amount > remaining_to_pay:
+                p_amount = remaining_to_pay
             
             if p_amount > 0:
-                # nSoft dažnai tikisi 'cash' arba 'card' (mažosiomis)
-                # Jei 'card' vis tiek mes klaidą, laikinai viską siųsime kaip 'cash'
-                method = p.get('method', 'cash')
+                # Keičiame 'card' į 'bank_card', nes 'card' nSoft atmetė
+                m_code = p.get('method', 'cash')
+                if m_code == 'card':
+                    m_code = 'bank_card'
+                
                 processed_payments.append({
-                    'method': method,
+                    'method': m_code,
                     'amount': p_amount
                 })
-                current_payments_sum += p_amount
+                remaining_to_pay = round(remaining_to_pay - p_amount, 2)
 
-        # Jei dėl kokių nors priežasčių suma vis tiek nesutampa (pvz. apvalinimas)
-        # Pakoreguojame paskutinį mokėjimą
-        if round(current_payments_sum, 2) != total_sales_amount and processed_payments:
-            diff = round(total_sales_amount - current_payments_sum, 2)
-            processed_payments[-1]['amount'] = round(processed_payments[-1]['amount'] + diff, 2)
+        # Jei po visko liko kokių nors centų paklaida - pridedame prie paskutinio mokėjimo
+        if remaining_to_pay != 0 and processed_payments:
+            processed_payments[-1]['amount'] = round(processed_payments[-1]['amount'] + remaining_to_pay, 2)
 
         payload = {
             'sales': sales,
@@ -74,7 +75,7 @@ class PosOrder(models.Model):
         headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
 
         try:
-            _logger.info("nSoft Payload: %s", payload)
+            _logger.info("nSoft Request: %s", payload)
             response = requests.post(url, json=payload, headers=headers, timeout=10)
             if response.status_code in [200, 201]:
                 return {'success': True, 'receipt_id': response.json().get('receiptId')}
