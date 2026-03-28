@@ -2,12 +2,21 @@
 import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
 import { patch } from "@web/core/utils/patch";
 import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+import { Order } from "@point_of_sale/app/store/models";
+
+// Padarome, kad užsakymas mokėtų atiduoti ID spausdinimui
+patch(Order.prototype, {
+    export_for_printing() {
+        const receipt = super.export_for_printing(...arguments);
+        receipt.nsoft_id = this.nsoft_id || false;
+        return receipt;
+    }
+});
 
 patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
         const order = this.currentOrder || this.pos.get_order();
         
-        // Paimame tik prekes
         const lines = (order.lines || []).map(l => ({
             name: l.product_name || l.product?.display_name || "Prekė",
             qty: l.qty || 0,
