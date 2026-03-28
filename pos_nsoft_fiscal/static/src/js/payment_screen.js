@@ -7,7 +7,7 @@ patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
         const order = this.currentOrder || this.pos.get_order();
         
-        // Prekių surinkimas
+        // Paimame tik prekes
         const lines = (order.lines || []).map(l => ({
             name: l.product_name || l.product?.display_name || "Prekė",
             qty: l.qty || 0,
@@ -15,20 +15,8 @@ patch(PaymentScreen.prototype, {
             total: l.price_subtotal_incl || (l.qty * l.price_unit)
         }));
 
-        // Mokėjimų surinkimas (tiksliai atpažįstame kortelę)
-        const payments = (order.payment_ids || order.paymentlines || []).map(p => {
-            const methodName = (p.payment_method_id?.name || "").toLowerCase();
-            return {
-                amount: p.amount || 0,
-                // Siunčiame 'card', o Python'as pavers į 'bank_card'
-                method: methodName.includes('kortel') || methodName.includes('card') || methodName.includes('wolt') ? 'card' : 'cash'
-            };
-        });
-
         const orderData = {
             lines: lines,
-            payments: payments,
-            amount_total: order.get_total_with_tax ? order.get_total_with_tax() : order.amount_total,
             name: order.name
         };
 
