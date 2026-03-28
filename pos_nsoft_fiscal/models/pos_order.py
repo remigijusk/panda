@@ -8,7 +8,6 @@ _logger = logging.getLogger(__name__)
 class PosOrder(models.Model):
     _inherit = 'pos.order'
 
-    # Laukas nSoft fiskaliniam numeriui saugoti duomenų bazėje
     nsoft_receipt_id = fields.Char(string='nSoft Receipt ID', readonly=True, copy=False)
 
     @api.model
@@ -21,23 +20,38 @@ class PosOrder(models.Model):
         if not token:
             return {'success': False, 'error': 'API Token nerastas.'}
 
+        # 1. Formuojame pardavimus
         sales = []
-        for line in order_data.get('lines', []):
-            l = line[2] if isinstance(line, list) and len(line) == 3 else line
+        for l in order_data.get('lines', []):
             sales.append({
-                'description': l.get('full_product_name', 'Prekė'),
-                'quantity': round(l.get('qty', 1.0), 3),
-                'unitPrice': round(l.get('price_unit', 0.0), 2),
-                'lineAmount': round(l.get('price_subtotal_incl', 0.0), 2),
+                'description': l.get('name', 'Prekė'),
+                'quantity': round(l.get('qty', 0), 3),
+                'unitPrice': round(l.get('price', 0), 2),
+                'lineAmount': round(l.get('total', 0), 2),
                 'vatCode': 'A'
             })
 
+        # 2. Formuojame mokėjimus (kad sutaptų su sales suma)
+        # nSoft reikalauja, kad suma sutaptų centas į centą
+        total_sales = round(sum(s['lineAmount'] for s in sales), 2)
+        
+        # Paimame realius mokėjimus iš JS
+        payments = []
+        raw_payments = order_data.get('payments', [])
+        
+        if raw_payments:
+            for p in raw_payments:
+                payments.append({
+                    'method': p.get('method', 'cash'),
+                    'amount': round(p.get('amount', 0), 2)
+                })
+        else:
+            # Apsidraudimas: jei nėra mokėjimų, siunčiame bendrą sumą kaip grynuosius
+            payments.append({'method': 'cash', 'amount': total_sales})
+
         payload = {
             'sales': sales,
-            'payments': [{
-                'method': 'cash', 
-                'amount': round(order_data.get('amount_total', 0.0), 2)
-            }]
+            'payments': payments
         }
 
         url = f"{api_url.rstrip('/')}/cr/{pos_id}/receipt"
@@ -53,7 +67,6 @@ class PosOrder(models.Model):
 
     @api.model
     def _order_fields(self, ui_order):
-        """ Ši funkcija paima 'nsoft_id' iš kasos ir įrašo į 'nsoft_receipt_id' duomenų bazėje """
         res = super(PosOrder, self)._order_fields(ui_order)
         if ui_order.get('nsoft_id'):
             res['nsoft_receipt_id'] = ui_order.get('nsoft_id')
