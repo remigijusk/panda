@@ -7,24 +7,29 @@ patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
         const order = this.currentOrder || this.pos.get_order();
         
-        // 1. DUOMENŲ SURINKIMAS (Odoo 19 tiesioginis būdas)
-        // Odoo 19 naudoja tiesiog .lines, .qty, .price_unit ir t.t.
+        // 1. DUOMENŲ SURINKIMAS (Odoo 19 "Deep Dive")
         const raw_lines = order.lines || [];
-        const lines = raw_lines.map(l => [0, 0, {
-            full_product_name: l.product_name || l.product?.display_name || "Prekė",
-            qty: l.qty || 0,
-            price_unit: l.price_unit || 0,
-            price_subtotal_incl: l.price_subtotal_incl || 0,
-        }]);
+        const lines = raw_lines.map(l => {
+            // Bandome ištraukti kainą ir kiekį visais įmanomais Odoo būdais
+            const qty = typeof l.get_quantity === 'function' ? l.get_quantity() : (l.qty || 0);
+            const price = typeof l.get_unit_price === 'function' ? l.get_unit_price() : (l.price_unit || 0);
+            const totalWithTax = typeof l.get_price_with_tax === 'function' ? l.get_price_with_tax() : (l.price_subtotal_incl || (qty * price));
+
+            return [0, 0, {
+                full_product_name: l.product_name || l.product?.display_name || "Prekė",
+                qty: qty,
+                price_unit: price,
+                price_subtotal_incl: totalWithTax,
+            }];
+        });
 
         const orderData = {
             lines: lines,
-            amount_total: order.amount_total || 0,
+            amount_total: typeof order.get_total_with_tax === 'function' ? order.get_total_with_tax() : (order.amount_total || 0),
             name: order.name
         };
 
         try {
-            // 2. Kreipiamės į Python variklį
             const result = await this.env.services.orm.call(
                 'pos.order',
                 'action_send_receipt_to_nsoft',
@@ -32,10 +37,9 @@ patch(PaymentScreen.prototype, {
             );
 
             if (result && result.success) {
-                // Išsaugome ID atmintyje
                 order.nsoft_id = result.receipt_id;
                 
-                // Prikabiname ID prie galutinio JSON siuntimo
+                // Išsaugojimo logika
                 const original_json = order.export_as_JSON;
                 order.export_as_JSON = function() {
                     const json = original_json.apply(this, arguments);
@@ -43,9 +47,9 @@ patch(PaymentScreen.prototype, {
                     return json;
                 };
 
-                // Viskas gerai, tęsiame
                 return super.validateOrder(isForceValidate);
             } else {
+                // Jei nSoft atmetė (kaip jūsų nuotraukoje), parodome jų lietuvišką pranešimą
                 this.env.services.dialog.add(AlertDialog, {
                     title: "Fiskalizacijos klaida",
                     body: result.error || "Nepavyko užregistruoti i.EKA",
@@ -53,10 +57,9 @@ patch(PaymentScreen.prototype, {
                 return false;
             }
         } catch (error) {
-            console.error("nSoft modulis pagavo klaidą:", error);
             this.env.services.dialog.add(AlertDialog, {
-                title: "Sistemos klaida",
-                body: "Įvyko klaida apdorojant kvitą. Patikrinkite naršyklės konsolę.",
+                title: "Ryšio klaida",
+                body: "Nepavyko susisiekti su Odoo serveriu.",
             });
             return false;
         }
