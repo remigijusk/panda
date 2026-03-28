@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="pos_nsoft_fiscal.OrderReceipt" t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('pos-receipt-amount')]" position="after">
+            <t t-if="receipt.nsoft_id">
+                <div class="pos-receipt-nsoft" style="margin-top: 10px; font-size: 80%; text-align: center; border-top: 1px dashed black; padding-top: 5px;">
+                    <strong>Fiskalinis čekis (i.EKA)</strong><br/>
+                    nSoft ID: <t t-esc="receipt.nsoft_id" />
+                </div>
+            </t>
+        </xpath>
+    </t>
+</templates>
