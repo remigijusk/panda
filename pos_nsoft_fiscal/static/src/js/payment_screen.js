@@ -2,16 +2,6 @@
 import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
 import { patch } from "@web/core/utils/patch";
 import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
-import { Order } from "@point_of_sale/app/store/models";
-
-// Padarome, kad užsakymas mokėtų atiduoti ID spausdinimui
-patch(Order.prototype, {
-    export_for_printing() {
-        const receipt = super.export_for_printing(...arguments);
-        receipt.nsoft_id = this.nsoft_id || false;
-        return receipt;
-    }
-});
 
 patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
@@ -37,13 +27,29 @@ patch(PaymentScreen.prototype, {
             );
 
             if (result && result.success) {
+                // Išsaugome ID
                 order.nsoft_id = result.receipt_id;
+                
+                // Dinamiškai pridedame ID prie išsaugojimo serveryje
                 const original_json = order.export_as_JSON;
-                order.export_as_JSON = function() {
-                    const json = original_json.apply(this, arguments);
-                    json.nsoft_id = this.nsoft_id;
-                    return json;
-                };
+                if (original_json) {
+                    order.export_as_JSON = function() {
+                        const json = original_json.apply(this, arguments);
+                        json.nsoft_id = this.nsoft_id;
+                        return json;
+                    };
+                }
+
+                // Dinamiškai pridedame ID prie SPAUSDINIMO
+                const original_print = order.export_for_printing;
+                if (original_print) {
+                    order.export_for_printing = function() {
+                        const receipt = original_print.apply(this, arguments);
+                        receipt.nsoft_id = this.nsoft_id;
+                        return receipt;
+                    };
+                }
+
                 return super.validateOrder(isForceValidate);
             } else {
                 this.env.services.dialog.add(AlertDialog, {
