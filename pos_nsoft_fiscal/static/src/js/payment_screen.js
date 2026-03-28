@@ -7,7 +7,7 @@ patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
         const order = this.currentOrder || this.pos.get_order();
         
-        // 1. Surenkame prekes (Odoo 19 Reactive)
+        // Prekių surinkimas
         const lines = (order.lines || []).map(l => ({
             name: l.product_name || l.product?.display_name || "Prekė",
             qty: l.qty || 0,
@@ -15,11 +15,15 @@ patch(PaymentScreen.prototype, {
             total: l.price_subtotal_incl || (l.qty * l.price_unit)
         }));
 
-        // 2. Surenkame mokėjimus (labai svarbu dėl "Mokėjimų sumos" klaidos)
-        const payments = (order.payment_ids || order.paymentlines || []).map(p => ({
-            amount: p.amount || 0,
-            method: p.payment_method_id?.name?.toLowerCase().includes('kortel') ? 'card' : 'cash'
-        }));
+        // Mokėjimų surinkimas (tiksliai atpažįstame kortelę)
+        const payments = (order.payment_ids || order.paymentlines || []).map(p => {
+            const methodName = (p.payment_method_id?.name || "").toLowerCase();
+            return {
+                amount: p.amount || 0,
+                // Siunčiame 'card', o Python'as pavers į 'bank_card'
+                method: methodName.includes('kortel') || methodName.includes('card') || methodName.includes('wolt') ? 'card' : 'cash'
+            };
+        });
 
         const orderData = {
             lines: lines,
@@ -37,15 +41,12 @@ patch(PaymentScreen.prototype, {
 
             if (result && result.success) {
                 order.nsoft_id = result.receipt_id;
-                
-                // Išsaugojimo injekcija
                 const original_json = order.export_as_JSON;
                 order.export_as_JSON = function() {
                     const json = original_json.apply(this, arguments);
                     json.nsoft_id = this.nsoft_id;
                     return json;
                 };
-
                 return super.validateOrder(isForceValidate);
             } else {
                 this.env.services.dialog.add(AlertDialog, {
@@ -57,7 +58,7 @@ patch(PaymentScreen.prototype, {
         } catch (error) {
             this.env.services.dialog.add(AlertDialog, {
                 title: "Ryšio klaida",
-                body: "Klaida siunčiant duomenis į serverį.",
+                body: "Nepavyko susisiekti su serveriu.",
             });
             return false;
         }
