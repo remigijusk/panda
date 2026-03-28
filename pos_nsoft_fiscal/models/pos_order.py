@@ -20,7 +20,6 @@ class PosOrder(models.Model):
         if not token:
             return {'success': False, 'error': 'API Token nerastas.'}
 
-        # 1. Surenkame prekes ir iškart skaičiuojame tikrąją sumą
         sales = []
         total_sales_amount = 0.0
         
@@ -35,12 +34,8 @@ class PosOrder(models.Model):
             })
             total_sales_amount += line_amount
         
-        # Svarbus žingsnis: apvaliname bendrą sumą
         total_sales_amount = round(total_sales_amount, 2)
 
-        # 2. IGNORUOJAME KASOS MOKĖJIMUS DĖL KLAIDŲ
-        # Formuojame vieną vienintelį "cash" mokėjimą, visiškai atitinkantį prekes.
-        # Taip išvengiame bet kokių apvalinimų ar kortelių atmetimų testinėje aplinkoje.
         payments = [{
             'method': 'cash',
             'amount': total_sales_amount
@@ -55,7 +50,6 @@ class PosOrder(models.Model):
         headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
 
         try:
-            _logger.info("nSoft Payload (v14): %s", payload)
             response = requests.post(url, json=payload, headers=headers, timeout=10)
             if response.status_code in [200, 201]:
                 return {'success': True, 'receipt_id': response.json().get('receiptId')}
@@ -68,4 +62,10 @@ class PosOrder(models.Model):
         res = super(PosOrder, self)._order_fields(ui_order)
         if ui_order.get('nsoft_id'):
             res['nsoft_receipt_id'] = ui_order.get('nsoft_id')
+        return res
+        
+    def _export_for_ui(self, order):
+        """ Ši Odoo 19 funkcija grąžina duomenis atgal į kasą. Pridedame nSoft ID. """
+        res = super(PosOrder, self)._export_for_ui(order)
+        res['nsoft_receipt_id'] = order.nsoft_receipt_id
         return res
