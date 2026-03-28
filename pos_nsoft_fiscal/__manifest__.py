@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.12.0',
+    'version': '19.0.1.13.0',
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'description': """
-        v1.12.0: Sutvarkyta grąžos (change) problema ir mokėjimo metodų suderinamumas.
+        v1.13.0: Pataisyta 'card' -> 'bank_card' ir griežtas grąžos (change) filtravimas.
     """,
     'depends': ['point_of_sale'],
     'data': [
