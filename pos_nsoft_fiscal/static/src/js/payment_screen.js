@@ -2,6 +2,20 @@
 import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
 import { patch } from "@web/core/utils/patch";
 import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+import { Order } from "@point_of_sale/app/store/models"; // Grąžiname importą, Odoo 19 jis gali veikti, jei teisingai panaudotas
+
+// Išbandome tiesioginį Order objekto papildymą
+try {
+    patch(Order.prototype, {
+        export_for_printing() {
+            const receipt = super.export_for_printing(...arguments);
+            receipt.nsoft_id = this.nsoft_id || false;
+            return receipt;
+        }
+    });
+} catch (e) {
+    console.warn("Nepavyko patch'inti Order modelio, naudosime dinaminį būdą.", e);
+}
 
 patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
@@ -27,10 +41,8 @@ patch(PaymentScreen.prototype, {
             );
 
             if (result && result.success) {
-                // Išsaugome ID
                 order.nsoft_id = result.receipt_id;
                 
-                // Dinamiškai pridedame ID prie išsaugojimo serveryje
                 const original_json = order.export_as_JSON;
                 if (original_json) {
                     order.export_as_JSON = function() {
@@ -40,7 +52,7 @@ patch(PaymentScreen.prototype, {
                     };
                 }
 
-                // Dinamiškai pridedame ID prie SPAUSDINIMO
+                // Dinaminis garantas spausdinimui (jei patch'as aukščiau nesuveikė)
                 const original_print = order.export_for_printing;
                 if (original_print) {
                     order.export_for_printing = function() {
