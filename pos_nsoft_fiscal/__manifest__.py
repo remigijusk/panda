@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.28.0',
+    'version': '19.0.1.29.0',
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'description': """
-        v1.28.0: Pašalintas nesaugus XML vertimas, kėlęs OwlError. Palikta tik nSoft ID spausdinimo logika ir neigiamų grąžinimų siuntimas.
+        v1.29.0: Pilnai veikiantys grąžinimai. Ištaisyta nSoft klaida išsiunčiant neigiamą kiekį, bet teigiamą vieneto kainą.
     """,
     'author': 'Remigijus Kubilius',
     'depends': ['point_of_sale'],
