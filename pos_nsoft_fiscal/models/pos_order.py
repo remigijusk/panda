@@ -27,20 +27,16 @@ class PosOrder(models.Model):
         exact_total = 0.0
         
         for l in order_data.get('lines', []):
+            # Imame originalias sumas be jokių pakeitimų (su minusais, jei tai grąžinimas)
             line_total = l.get('total', 0)
             qty = l.get('qty', 0)
             price = l.get('price', 0)
-            
-            if is_refund:
-                line_total = abs(line_total)
-                qty = abs(qty)
-                price = abs(price)
 
             line_amt = round(line_total, 2)
             exact_total += line_amt
             
-            orig_qty = round(qty, 3)
-            orig_price = round(price, 2)
+            orig_qty = round(abs(qty), 3)
+            orig_price = round(abs(price), 2)
             
             name = l.get('name', 'Prekė')
             if orig_qty != 1.0 and orig_qty != 0.0:
@@ -54,7 +50,6 @@ class PosOrder(models.Model):
                 'vatCode': 'A'
             }
 
-            # Jei tai grąžinimas, pridedame privalomus laukus iš Jūsų nuotraukos!
             if is_refund:
                 item_data['origDocNumber'] = 1
                 item_data['origCRNumber'] = pos_id
