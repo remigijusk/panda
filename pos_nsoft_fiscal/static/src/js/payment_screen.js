@@ -7,16 +7,22 @@ patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
         const order = this.currentOrder || this.pos.get_order();
         
-        const lines = (order.lines || []).map(l => ({
-            name: l.product_name || l.product?.display_name || "Prekė",
-            qty: l.qty || 0,
-            price: l.price_unit || 0,
-            total: l.price_subtotal_incl || (l.qty * l.price_unit)
+        // Saugiai surenkame prekes
+        const orderLines = order.get_orderlines ? order.get_orderlines() : order.lines || [];
+        const lines = orderLines.map(line => ({
+            name: line.get_product ? line.get_product().display_name : (line.product?.display_name || "Prekė"),
+            qty: line.get_quantity ? line.get_quantity() : (line.qty || 0),
+            price: line.get_unit_price ? line.get_unit_price() : (line.price_unit || 0),
+            total: line.get_price_with_tax ? line.get_price_with_tax() : (line.price_subtotal_incl || 0)
         }));
+
+        // Paimame TIKRĄJĄ sumą (su jau įskaičiuotais apvalinimais)
+        const trueTotal = order.get_total_with_tax ? order.get_total_with_tax() : (order.amount_total || 0);
 
         const orderData = {
             lines: lines,
-            name: order.name
+            name: order.name,
+            true_total: trueTotal
         };
 
         try {
@@ -30,24 +36,20 @@ patch(PaymentScreen.prototype, {
                 order.nsoft_id = result.receipt_id;
                 
                 if (typeof order.export_as_JSON === 'function') {
-                    const original_json = order.export_as_JSON;
+                    const original_json = order.export_as_JSON.bind(order);
                     order.export_as_JSON = function() {
-                        const json = original_json.apply(this, arguments);
+                        const json = original_json();
                         json.nsoft_id = this.nsoft_id;
                         return json;
                     };
                 }
 
                 if (typeof order.export_for_printing === 'function') {
-                    const original_print = order.export_for_printing;
+                    const original_print = order.export_for_printing.bind(order);
                     order.export_for_printing = function() {
-                        const receipt = original_print.apply(this, arguments) || {};
+                        const receipt = original_print();
                         receipt.nsoft_id = this.nsoft_id;
                         return receipt;
-                    };
-                } else {
-                    order.export_for_printing = function() {
-                        return { nsoft_id: this.nsoft_id };
                     };
                 }
 
