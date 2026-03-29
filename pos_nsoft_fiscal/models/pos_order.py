@@ -20,36 +20,36 @@ class PosOrder(models.Model):
         if not token:
             return {'success': False, 'error': 'API Token nerastas.'}
 
-        # 1. Patikriname, ar tai grąžinimas
         raw_total = sum(l.get('total', 0) for l in order_data.get('lines', []))
         is_refund = raw_total < 0
 
-        # 2. Surenkame prekes paverčiant skaičius TEIGIAMAIS (abs)
         items_list = []
         for l in order_data.get('lines', []):
+            orig_qty = round(abs(l.get('qty', 0)), 3)
+            orig_price = round(abs(l.get('price', 0)), 2)
+            line_amt = round(abs(l.get('total', 0)), 2)
+            
+            # MAGIJA SVERIAMIEMS PRODUKTAMS
+            name = l.get('name', 'Prekė')
+            if orig_qty != 1.0:
+                name = f"{name} ({orig_qty} x {orig_price} EUR)"
+
             items_list.append({
-                'description': l.get('name', 'Prekė'),
-                'quantity': round(abs(l.get('qty', 0)), 3),
-                'unitPrice': round(abs(l.get('price', 0)), 2),
-                'lineAmount': round(abs(l.get('total', 0)), 2),
+                'description': name,
+                'quantity': 1.0,         # Visada fiksuojame 1
+                'unitPrice': line_amt,   # Kaina prilyginama galutinei eilutės sumai
+                'lineAmount': line_amt,
                 'vatCode': 'A'
             })
         
         total_amount = round(abs(raw_total), 2)
         payments = [{'method': 'cash', 'amount': total_amount}]
 
-        # 3. Formuojame struktūrą pagal tai, ar tai Pardavimas, ar Grąžinimas
         if is_refund:
-            payload = {
-                'returns': items_list,  # nSoft reikalauja 'returns' lauko
-                'payments': payments
-            }
+            payload = {'returns': items_list, 'payments': payments}
             endpoint = '/return'
         else:
-            payload = {
-                'sales': items_list,    # nSoft reikalauja 'sales' lauko
-                'payments': payments
-            }
+            payload = {'sales': items_list, 'payments': payments}
             endpoint = '/receipt'
 
         url = f"{api_url.rstrip('/')}/cr/{pos_id}{endpoint}"
