@@ -1,19 +1,13 @@
-# -*- coding: utf-8 -*-
-{
-    'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.17.0',
-    'category': 'Sales/Point of Sale',
-    'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
-    'depends': ['point_of_sale'],
-    'data': [
-        'views/res_config_settings_views.xml',
-    ],
-    'installable': True,
-    'assets': {
-        'point_of_sale._assets_pos': [
-            'pos_nsoft_fiscal/static/src/js/payment_screen.js',
-            'pos_nsoft_fiscal/static/src/xml/OrderReceipt.xml',
-        ],
-    },
-    'license': 'LGPL-3',
-}
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="pos_nsoft_fiscal.OrderReceipt" t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('pos-receipt')]" position="inside">
+            <t t-if="props.data and props.data.nsoft_id">
+                <div class="pos-receipt-nsoft" style="margin-top: 15px; text-align: center; border-top: 1px dashed black; padding-top: 10px; font-size: 14px;">
+                    <strong>Fiskalinis čekis (i.EKA)</strong><br/>
+                    nSoft ID: <t t-esc="props.data.nsoft_id" />
+                </div>
+            </t>
+        </xpath>
+    </t>
+</templates>
