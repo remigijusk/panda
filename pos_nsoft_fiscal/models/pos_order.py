@@ -24,14 +24,13 @@ class PosOrder(models.Model):
         is_refund = raw_total < 0
 
         items_list = []
-        exact_total = 0.0  # Naudosime tikslią suapvalintų eilučių sumą apmokėjimui
+        exact_total = 0.0
         
         for l in order_data.get('lines', []):
             line_total = l.get('total', 0)
             qty = l.get('qty', 0)
             price = l.get('price', 0)
             
-            # Jei tai grąžinimas, visus skaičius verčiame teigiamais (nSoft reikalavimas)
             if is_refund:
                 line_total = abs(line_total)
                 qty = abs(qty)
@@ -43,20 +42,26 @@ class PosOrder(models.Model):
             orig_qty = round(qty, 3)
             orig_price = round(price, 2)
             
-            # Sveriamų ir daugybinių prekių formatavimas
             name = l.get('name', 'Prekė')
             if orig_qty != 1.0 and orig_qty != 0.0:
                 name = f"{name} ({orig_qty} x {orig_price} EUR)"
 
-            items_list.append({
+            item_data = {
                 'description': name,
                 'quantity': 1.0,         
                 'unitPrice': line_amt,   
                 'lineAmount': line_amt,
                 'vatCode': 'A'
-            })
+            }
+
+            # Jei tai grąžinimas, pridedame privalomus laukus iš Jūsų nuotraukos!
+            if is_refund:
+                item_data['origDocNumber'] = 1
+                item_data['origCRNumber'] = pos_id
+                item_data['otherDocNumber'] = "Grąžinimas"
+
+            items_list.append(item_data)
         
-        # Apmokėjimas dabar idealiai atitinka eilučių sumą
         exact_total = round(exact_total, 2)
         payments = [{'method': 'cash', 'amount': exact_total}]
 
