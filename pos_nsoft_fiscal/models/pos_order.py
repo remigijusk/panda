@@ -20,14 +20,14 @@ class PosOrder(models.Model):
         if not token:
             return {'success': False, 'error': 'API Token nerastas.'}
 
-        # 1. Patikriname, ar tai grąžinimas (jei suma < 0)
+        # 1. Patikriname, ar tai grąžinimas
         raw_total = sum(l.get('total', 0) for l in order_data.get('lines', []))
         is_refund = raw_total < 0
 
         # 2. Surenkame prekes paverčiant skaičius TEIGIAMAIS (abs)
-        sales = []
+        items_list = []
         for l in order_data.get('lines', []):
-            sales.append({
+            items_list.append({
                 'description': l.get('name', 'Prekė'),
                 'quantity': round(abs(l.get('qty', 0)), 3),
                 'unitPrice': round(abs(l.get('price', 0)), 2),
@@ -35,23 +35,24 @@ class PosOrder(models.Model):
                 'vatCode': 'A'
             })
         
-        # Bendra mokėjimų suma taip pat turi būti teigiama
-        total_sales_amount = round(abs(raw_total), 2)
+        total_amount = round(abs(raw_total), 2)
+        payments = [{'method': 'cash', 'amount': total_amount}]
 
-        payments = [{
-            'method': 'cash',
-            'amount': total_sales_amount
-        }]
+        # 3. Formuojame struktūrą pagal tai, ar tai Pardavimas, ar Grąžinimas
+        if is_refund:
+            payload = {
+                'returns': items_list,  # nSoft reikalauja 'returns' lauko
+                'payments': payments
+            }
+            endpoint = '/return'
+        else:
+            payload = {
+                'sales': items_list,    # nSoft reikalauja 'sales' lauko
+                'payments': payments
+            }
+            endpoint = '/receipt'
 
-        payload = {
-            'sales': sales,
-            'payments': payments
-        }
-
-        # 3. NUKREIPIAME Į TEISINGĄ nSoft ADRESĄ
-        endpoint = '/return' if is_refund else '/receipt'
         url = f"{api_url.rstrip('/')}/cr/{pos_id}{endpoint}"
-        
         headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
 
         try:
