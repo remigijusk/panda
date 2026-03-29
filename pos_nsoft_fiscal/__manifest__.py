@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.23.0',
+    'version': '19.0.1.24.0',
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'description': """
-        v1.23.0: Ištaisyta sveriamų produktų apvalinimo klaida (visada siunčiamas kiekis 1.0).
+        v1.24.0: Ištaisyta 1 cento paklaidos klaida dideliuose krepšeliuose. Apmokėjimo suma skaičiuojama tiesiogiai iš suapvalintų prekių eilučių.
     """,
     'depends': ['point_of_sale'],
     'data': [
