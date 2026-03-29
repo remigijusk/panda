@@ -24,26 +24,41 @@ class PosOrder(models.Model):
         is_refund = raw_total < 0
 
         items_list = []
+        exact_total = 0.0  # Naudosime tikslią suapvalintų eilučių sumą apmokėjimui
+        
         for l in order_data.get('lines', []):
-            orig_qty = round(abs(l.get('qty', 0)), 3)
-            orig_price = round(abs(l.get('price', 0)), 2)
-            line_amt = round(abs(l.get('total', 0)), 2)
+            line_total = l.get('total', 0)
+            qty = l.get('qty', 0)
+            price = l.get('price', 0)
             
-            # MAGIJA SVERIAMIEMS PRODUKTAMS
+            # Jei tai grąžinimas, visus skaičius verčiame teigiamais (nSoft reikalavimas)
+            if is_refund:
+                line_total = abs(line_total)
+                qty = abs(qty)
+                price = abs(price)
+
+            line_amt = round(line_total, 2)
+            exact_total += line_amt
+            
+            orig_qty = round(qty, 3)
+            orig_price = round(price, 2)
+            
+            # Sveriamų ir daugybinių prekių formatavimas
             name = l.get('name', 'Prekė')
-            if orig_qty != 1.0:
+            if orig_qty != 1.0 and orig_qty != 0.0:
                 name = f"{name} ({orig_qty} x {orig_price} EUR)"
 
             items_list.append({
                 'description': name,
-                'quantity': 1.0,         # Visada fiksuojame 1
-                'unitPrice': line_amt,   # Kaina prilyginama galutinei eilutės sumai
+                'quantity': 1.0,         
+                'unitPrice': line_amt,   
                 'lineAmount': line_amt,
                 'vatCode': 'A'
             })
         
-        total_amount = round(abs(raw_total), 2)
-        payments = [{'method': 'cash', 'amount': total_amount}]
+        # Apmokėjimas dabar idealiai atitinka eilučių sumą
+        exact_total = round(exact_total, 2)
+        payments = [{'method': 'cash', 'amount': exact_total}]
 
         if is_refund:
             payload = {'returns': items_list, 'payments': payments}
