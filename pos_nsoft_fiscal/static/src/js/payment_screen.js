@@ -2,20 +2,6 @@
 import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
 import { patch } from "@web/core/utils/patch";
 import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
-import { Order } from "@point_of_sale/app/store/models"; // Grąžiname importą, Odoo 19 jis gali veikti, jei teisingai panaudotas
-
-// Išbandome tiesioginį Order objekto papildymą
-try {
-    patch(Order.prototype, {
-        export_for_printing() {
-            const receipt = super.export_for_printing(...arguments);
-            receipt.nsoft_id = this.nsoft_id || false;
-            return receipt;
-        }
-    });
-} catch (e) {
-    console.warn("Nepavyko patch'inti Order modelio, naudosime dinaminį būdą.", e);
-}
 
 patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
@@ -41,22 +27,23 @@ patch(PaymentScreen.prototype, {
             );
 
             if (result && result.success) {
+                // Išsaugome ID atmintyje
                 order.nsoft_id = result.receipt_id;
                 
-                const original_json = order.export_as_JSON;
-                if (original_json) {
+                // Saugus (dinaminis) funkcijų perrašymas tik šiam konkrečiam užsakymui
+                if (typeof order.export_as_JSON === 'function') {
+                    const original_json = order.export_as_JSON.bind(order);
                     order.export_as_JSON = function() {
-                        const json = original_json.apply(this, arguments);
+                        const json = original_json();
                         json.nsoft_id = this.nsoft_id;
                         return json;
                     };
                 }
 
-                // Dinaminis garantas spausdinimui (jei patch'as aukščiau nesuveikė)
-                const original_print = order.export_for_printing;
-                if (original_print) {
+                if (typeof order.export_for_printing === 'function') {
+                    const original_print = order.export_for_printing.bind(order);
                     order.export_for_printing = function() {
-                        const receipt = original_print.apply(this, arguments);
+                        const receipt = original_print();
                         receipt.nsoft_id = this.nsoft_id;
                         return receipt;
                     };
