@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.32.0',
+    'version': '19.0.1.33.0',
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'description': """
-        v1.32.0: Paslėpti standartiniai dubliuojami įmonės rekvizitai, leidžiant naudoti tik POS Antraštę. Pašalinta tuščia 'PVM mok. kodas' eilutė.
+        v1.33.0: Pašalintas lūžtantis vertimų failas. Žodis 'Served by' saugiai keičiamas į 'Aptarnavo' per CSS.
     """,
     'author': 'Remigijus Kubilius',
     'depends': ['point_of_sale'],
