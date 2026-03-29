@@ -7,22 +7,19 @@
         <field name="arch" type="xml">
             <xpath expr="//block[@id='pos_accounting_section']" position="after">
                 <block title="nSoft Virtuali Fiskalizacija (i.EKA)" id="pos_nsoft_fiscal_section">
-                    <setting string="API Nustatymai" help="nVirtualFiscal prisijungimo duomenys">
+                    <setting id="nsoft_api_settings" string="API Nustatymai" help="nVirtualFiscal prisijungimo duomenys">
                         <div class="content-group">
                             <div class="row mt16">
                                 <label for="pos_nsoft_api_url" class="col-lg-3 o_light_label"/>
-                                <field name="pos_nsoft_api_url" class="col-lg-9"/>
+                                <field name="pos_nsoft_api_url"/>
                             </div>
                             <div class="row mt16">
                                 <label for="pos_nsoft_pos_id" class="col-lg-3 o_light_label"/>
-                                <field name="pos_nsoft_pos_id" class="col-lg-9"/>
+                                <field name="pos_nsoft_pos_id"/>
                             </div>
                             <div class="row mt16">
                                 <label for="pos_nsoft_api_token" class="col-lg-3 o_light_label"/>
-                                <field name="pos_nsoft_api_token" class="col-lg-9" password="True"/>
-                            </div>
-                            <div class="row mt16">
-                                <button name="action_test_nsoft_connection" type="object" string="Testuoti ryšį" class="btn-primary" icon="fa-wifi"/>
+                                <field name="pos_nsoft_api_token" password="True"/>
                             </div>
                         </div>
                     </setting>
