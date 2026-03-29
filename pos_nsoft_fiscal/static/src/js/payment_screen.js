@@ -1,37 +1,8 @@
 /** @odoo-module */
 import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
-import { Order } from "@point_of_sale/app/store/models";
 import { patch } from "@web/core/utils/patch";
 import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 
-// 1. GLOBALUS KOSMETINIS KVITO PATAISYMAS
-patch(Order.prototype, {
-    export_for_printing() {
-        const receipt = super.export_for_printing(...arguments);
-        
-        // Išvalome Odoo vertimų šiukšles viršuje
-        if (receipt.name) {
-            receipt.name = receipt.name.replace('PVM mok. kodas Bilietas', 'Kvitas').replace('Bilietas', 'Kvitas');
-        }
-        if (receipt.tracking_number && !String(receipt.tracking_number).includes('Užsakymo')) {
-            receipt.tracking_number = 'Užsakymo nr. ' + receipt.tracking_number;
-        }
-        
-        // GRIEŽTAI ištriname apatinius dubliuojamus rekvizitus (liks tik tavo graži Antraštė)
-        if (receipt.company) {
-            receipt.company.vat = false;
-            receipt.company.company_registry = false;
-            receipt.company.contact_address = false;
-            receipt.company.phone = false;
-            receipt.company.email = false;
-            receipt.company.website = false;
-        }
-        
-        return receipt;
-    }
-});
-
-// 2. FISKALIZACIJOS LOGIKA
 patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
         const order = this.currentOrder || this.pos.get_order();
@@ -71,14 +42,33 @@ patch(PaymentScreen.prototype, {
                     };
                 }
 
-                // Saugus i.EKA ID prikabinimas
                 if (typeof order.export_for_printing === 'function' && !order.hasOwnProperty('export_for_printing_nsoft')) {
                     const original_print = order.export_for_printing.bind(order);
                     order.export_for_printing_nsoft = true;
                     order.export_for_printing = function() {
-                        const rec = original_print();
-                        rec.nsoft_id = this.nsoft_id;
-                        return rec;
+                        const receipt = original_print();
+                        receipt.nsoft_id = this.nsoft_id;
+
+                        // --- SAUGŪS KOSMETINIAI PATAISYMAI ---
+                        if (receipt.name) {
+                            receipt.name = receipt.name.replace(/PVM mok\. kodas/g, '');
+                            receipt.name = receipt.name.replace(/Bilietas/g, 'Kvitas');
+                            receipt.name = receipt.name.trim();
+                        }
+                        if (receipt.tracking_number && !String(receipt.tracking_number).includes('Užsakymo')) {
+                            receipt.tracking_number = 'Užsakymo nr. ' + receipt.tracking_number;
+                        }
+                        // Ištriname besidubliuojančią informaciją apačioje
+                        if (receipt.company) {
+                            receipt.company.vat = false;
+                            receipt.company.company_registry = false;
+                            receipt.company.contact_address = false;
+                            receipt.company.phone = false;
+                            receipt.company.email = false;
+                            receipt.company.website = false;
+                        }
+
+                        return receipt;
                     };
                 }
 
