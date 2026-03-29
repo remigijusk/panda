@@ -20,35 +20,37 @@ class PosOrder(models.Model):
         if not token:
             return {'success': False, 'error': 'API Token nerastas.'}
 
-        raw_total = sum(l.get('total', 0) for l in order_data.get('lines', []))
-        is_refund = raw_total < 0
+        # Tikroji suma iš JS
+        true_total = order_data.get('true_total', 0.0)
+        is_refund = true_total < 0
 
         items_list = []
-        exact_total = 0.0
+        sum_of_lines = 0.0
         
         for l in order_data.get('lines', []):
-            line_total = l.get('total', 0)
             qty = l.get('qty', 0)
             price = l.get('price', 0)
+            line_total = l.get('total', 0)
 
-            line_amt = round(line_total, 2)
-            exact_total += line_amt
+            # 1 TAISYKLĖ: ABSOLIUČIAI Viskas teigiama (net ir grąžinimuose)
+            abs_qty = abs(qty)
+            abs_price = abs(price)
+            abs_line_total = abs(line_total)
+
+            line_amt = round(abs_line_total, 2)
+            sum_of_lines += line_amt
             
-            orig_qty = round(abs(qty), 3)
-            orig_price = round(abs(price), 2)
+            orig_qty = round(abs_qty, 3)
+            orig_price = round(abs_price, 2)
             
             name = l.get('name', 'Prekė')
             if orig_qty != 1.0 and orig_qty != 0.0:
                 name = f"{name} ({orig_qty} x {orig_price} EUR)"
 
-            # MAGIJA GRĄŽINIMAMS: Kaina visada teigiama, minusas dedamas ant kiekio
-            send_qty = 1.0 if line_amt >= 0 else -1.0
-            send_price = abs(line_amt)
-
             item_data = {
                 'description': name,
-                'quantity': send_qty,
-                'unitPrice': send_price,   
+                'quantity': 1.0,         
+                'unitPrice': line_amt,   
                 'lineAmount': line_amt,
                 'vatCode': 'A'
             }
@@ -60,8 +62,36 @@ class PosOrder(models.Model):
 
             items_list.append(item_data)
         
-        exact_total = round(exact_total, 2)
-        payments = [{'method': 'cash', 'amount': exact_total}]
+        # 2 TAISYKLĖ: Apvalinimų gaudymas
+        abs_true_total = round(abs(true_total), 2)
+        sum_of_lines = round(sum_of_lines, 2)
+        rounding_diff = round(abs_true_total - sum_of_lines, 2)
+
+        # Jei Odoo pritaikė apvalinimą, informuojame nSoft
+        if rounding_diff != 0.0:
+            if rounding_diff > 0:
+                # Pridedame apvalinimo eilutę
+                rounding_item = {
+                    'description': "Apvalinimas",
+                    'quantity': 1.0,
+                    'unitPrice': abs(rounding_diff),
+                    'lineAmount': abs(rounding_diff),
+                    'vatCode': 'A'
+                }
+                if is_refund:
+                    rounding_item['origDocNumber'] = 1
+                    rounding_item['origCRNumber'] = pos_id
+                    rounding_item['otherDocNumber'] = "Grąžinimas"
+                items_list.append(rounding_item)
+            else:
+                # Jei reikia atimti centus, tiesiog pamažiname paskutinės prekės kainą, 
+                # kad išvengtume neigiamų skaičių
+                if items_list:
+                    items_list[-1]['unitPrice'] = round(items_list[-1]['unitPrice'] + rounding_diff, 2)
+                    items_list[-1]['lineAmount'] = round(items_list[-1]['lineAmount'] + rounding_diff, 2)
+
+        # Mokėjimas visada lygus tikrajai, teigiamai apvalintai sumai
+        payments = [{'method': 'cash', 'amount': abs_true_total}]
 
         if is_refund:
             payload = {'returns': items_list, 'payments': payments}
