@@ -27,25 +27,27 @@ patch(PaymentScreen.prototype, {
             );
 
             if (result && result.success) {
-                // Išsaugome ID atmintyje
                 order.nsoft_id = result.receipt_id;
                 
-                // Saugus (dinaminis) funkcijų perrašymas tik šiam konkrečiam užsakymui
                 if (typeof order.export_as_JSON === 'function') {
-                    const original_json = order.export_as_JSON.bind(order);
+                    const original_json = order.export_as_JSON;
                     order.export_as_JSON = function() {
-                        const json = original_json();
+                        const json = original_json.apply(this, arguments);
                         json.nsoft_id = this.nsoft_id;
                         return json;
                     };
                 }
 
                 if (typeof order.export_for_printing === 'function') {
-                    const original_print = order.export_for_printing.bind(order);
+                    const original_print = order.export_for_printing;
                     order.export_for_printing = function() {
-                        const receipt = original_print();
+                        const receipt = original_print.apply(this, arguments) || {};
                         receipt.nsoft_id = this.nsoft_id;
                         return receipt;
+                    };
+                } else {
+                    order.export_for_printing = function() {
+                        return { nsoft_id: this.nsoft_id };
                     };
                 }
 
