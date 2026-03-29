@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.21.0',
+    'version': '19.0.1.22.0',
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'description': """
-        v1.21.0: Pilnai palaikomi prekių grąžinimai (Refunds / /return endpoint). 
-        Tiesioginis nSoft ID atvaizdavimas kvitų šablone per OWL env.
+        v1.22.0: Pataisyta 'returns' lauko klaida grąžinimuose. Ištaisyta OwlError XML šablone.
     """,
     'depends': ['point_of_sale'],
     'data': [
