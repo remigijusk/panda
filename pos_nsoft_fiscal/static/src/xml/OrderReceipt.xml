@@ -4,14 +4,11 @@
         <xpath expr="//div[hasclass('pos-receipt')]" position="inside">
             <div class="pos-receipt-nsoft" style="margin-top: 15px; text-align: center; border-top: 1px dashed black; padding-top: 10px; font-size: 14px;">
                 <strong>Fiskalinis čekis (i.EKA)</strong><br/>
-                <t t-if="env.services.pos.get_order() and env.services.pos.get_order().nsoft_id">
-                    nSoft ID: <t t-esc="env.services.pos.get_order().nsoft_id" />
-                </t>
-                <t t-elif="props.data and props.data.nsoft_id">
+                <t t-if="props and props.data and props.data.nsoft_id">
                     nSoft ID: <t t-esc="props.data.nsoft_id" />
                 </t>
                 <t t-else="">
-                    nSoft ID: Duomenys apdorojami...
+                    nSoft ID: <t t-esc="receipt and receipt.nsoft_id ? receipt.nsoft_id : 'Registruota'" />
                 </t>
             </div>
         </xpath>
