@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.34.0',
+    'version': '19.0.1.35.0',
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'description': """
-        v1.34.0: Sutvarkyti besidubliuojantys rekvizitai per Order.prototype. Pridėtas oficialus i18n/lt.po vertimų failas ('Served by' -> 'Aptarnavo').
+        v1.35.0: Pilnas vertimų failų pašalinimas. Visa vizualinė logika (Kvitas, Grąža, Aptarnavo) valdoma per JS ir XML.
     """,
     'author': 'Remigijus Kubilius',
     'depends': ['point_of_sale'],
