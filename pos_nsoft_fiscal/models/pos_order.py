@@ -20,21 +20,23 @@ class PosOrder(models.Model):
         if not token:
             return {'success': False, 'error': 'API Token nerastas.'}
 
+        # 1. Patikriname, ar tai grąžinimas (jei suma < 0)
+        raw_total = sum(l.get('total', 0) for l in order_data.get('lines', []))
+        is_refund = raw_total < 0
+
+        # 2. Surenkame prekes paverčiant skaičius TEIGIAMAIS (abs)
         sales = []
-        total_sales_amount = 0.0
-        
         for l in order_data.get('lines', []):
-            line_amount = round(l.get('total', 0), 2)
             sales.append({
                 'description': l.get('name', 'Prekė'),
-                'quantity': round(l.get('qty', 0), 3),
-                'unitPrice': round(l.get('price', 0), 2),
-                'lineAmount': line_amount,
+                'quantity': round(abs(l.get('qty', 0)), 3),
+                'unitPrice': round(abs(l.get('price', 0)), 2),
+                'lineAmount': round(abs(l.get('total', 0)), 2),
                 'vatCode': 'A'
             })
-            total_sales_amount += line_amount
         
-        total_sales_amount = round(total_sales_amount, 2)
+        # Bendra mokėjimų suma taip pat turi būti teigiama
+        total_sales_amount = round(abs(raw_total), 2)
 
         payments = [{
             'method': 'cash',
@@ -46,10 +48,14 @@ class PosOrder(models.Model):
             'payments': payments
         }
 
-        url = f"{api_url.rstrip('/')}/cr/{pos_id}/receipt"
+        # 3. NUKREIPIAME Į TEISINGĄ nSoft ADRESĄ
+        endpoint = '/return' if is_refund else '/receipt'
+        url = f"{api_url.rstrip('/')}/cr/{pos_id}{endpoint}"
+        
         headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
 
         try:
+            _logger.info(f"Siunčiame į nSoft {endpoint}: {payload}")
             response = requests.post(url, json=payload, headers=headers, timeout=10)
             if response.status_code in [200, 201]:
                 return {'success': True, 'receipt_id': response.json().get('receiptId')}
@@ -62,10 +68,4 @@ class PosOrder(models.Model):
         res = super(PosOrder, self)._order_fields(ui_order)
         if ui_order.get('nsoft_id'):
             res['nsoft_receipt_id'] = ui_order.get('nsoft_id')
-        return res
-        
-    def _export_for_ui(self, order):
-        """ Ši Odoo 19 funkcija grąžina duomenis atgal į kasą. Pridedame nSoft ID. """
-        res = super(PosOrder, self)._export_for_ui(order)
-        res['nsoft_receipt_id'] = order.nsoft_receipt_id
         return res
