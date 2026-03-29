@@ -7,7 +7,6 @@ patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
         const order = this.currentOrder || this.pos.get_order();
         
-        // Saugiai surenkame prekes
         const orderLines = order.get_orderlines ? order.get_orderlines() : order.lines || [];
         const lines = orderLines.map(line => ({
             name: line.get_product ? line.get_product().display_name : (line.product?.display_name || "Prekė"),
@@ -16,7 +15,6 @@ patch(PaymentScreen.prototype, {
             total: line.get_price_with_tax ? line.get_price_with_tax() : (line.price_subtotal_incl || 0)
         }));
 
-        // Paimame TIKRĄJĄ sumą (su jau įskaičiuotais apvalinimais)
         const trueTotal = order.get_total_with_tax ? order.get_total_with_tax() : (order.amount_total || 0);
 
         const orderData = {
@@ -49,6 +47,33 @@ patch(PaymentScreen.prototype, {
                     order.export_for_printing = function() {
                         const receipt = original_print();
                         receipt.nsoft_id = this.nsoft_id;
+
+                        // --- KOSMETINIAI KVITO PATAISYMAI --- //
+                        
+                        // 1. Ištaisome vertimų klaidas ir ištriname tuščią "PVM mok. kodas"
+                        if (receipt.name) {
+                            receipt.name = receipt.name.replace(/PVM mok\. kodas/g, '');
+                            receipt.name = receipt.name.replace(/Bilietas/g, 'Kvitas');
+                            receipt.name = receipt.name.trim();
+                        }
+
+                        // 2. Ištaisome didelį numerį į "Užsakymo nr."
+                        if (receipt.tracking_number && !String(receipt.tracking_number).includes('Užsakymo')) {
+                            receipt.tracking_number = 'Užsakymo nr. ' + receipt.tracking_number;
+                        }
+
+                        // 3. IŠVALOME DUBLIUOTUS REKVIZITUS IŠ APAČIOS IR VIRŠAUS
+                        // Kadangi viską gražiai surašėte į "Custom Header", 
+                        // standartinius Odoo duomenis tiesiog išjungiame:
+                        if (receipt.company) {
+                            receipt.company.vat = false;
+                            receipt.company.company_registry = false;
+                            receipt.company.contact_address = false;
+                            receipt.company.phone = false;
+                            receipt.company.email = false;
+                            receipt.company.website = false;
+                        }
+                        
                         return receipt;
                     };
                 }
