@@ -27,7 +27,6 @@ class PosOrder(models.Model):
         exact_total = 0.0
         
         for l in order_data.get('lines', []):
-            # Imame originalias sumas be jokių pakeitimų (su minusais, jei tai grąžinimas)
             line_total = l.get('total', 0)
             qty = l.get('qty', 0)
             price = l.get('price', 0)
@@ -42,10 +41,14 @@ class PosOrder(models.Model):
             if orig_qty != 1.0 and orig_qty != 0.0:
                 name = f"{name} ({orig_qty} x {orig_price} EUR)"
 
+            # MAGIJA GRĄŽINIMAMS: Kaina visada teigiama, minusas dedamas ant kiekio
+            send_qty = 1.0 if line_amt >= 0 else -1.0
+            send_price = abs(line_amt)
+
             item_data = {
                 'description': name,
-                'quantity': 1.0,         
-                'unitPrice': line_amt,   
+                'quantity': send_qty,
+                'unitPrice': send_price,   
                 'lineAmount': line_amt,
                 'vatCode': 'A'
             }
