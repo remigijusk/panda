@@ -54,7 +54,7 @@ class PosSession(models.Model):
         return api_url, pos_id, token
 
     def print_nsoft_x_report(self):
-        """Iškviečiamas iš POS Uždarymo lentelės"""
+        """Šią funkciją iškvies POS ekrano mygtukas"""
         for session in self:
             api_url, pos_id, token = self._get_nsoft_credentials(session)
             url = f"{api_url.rstrip('/')}/cr/{pos_id}/cur-day"
