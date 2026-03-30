@@ -34,6 +34,7 @@ class PosSession(models.Model):
             if amount != 0:
                 direction = 'out' if _type == 'out' or amount < 0 else 'in'
                 self._send_nsoft_cash_operation(direction, abs(amount))
+                
         except Exception as e:
             _logger.error(f"nSoft: Klaida traukiant cash_in_out duomenis: {e}")
         return res
@@ -53,10 +54,10 @@ class PosSession(models.Model):
         return api_url, pos_id, token
 
     def print_nsoft_x_report(self):
-        """Šią funkciją iškvies X ataskaitos mygtukas iš POS ekrano"""
+        """Iškviečiamas iš POS Uždarymo lentelės"""
         for session in self:
             api_url, pos_id, token = self._get_nsoft_credentials(session)
-            url = f"{api_url.rstrip('/')}/api/cr/{pos_id}/cur-day"
+            url = f"{api_url.rstrip('/')}/cr/{pos_id}/cur-day"
             headers = {"Authorization": f"Bearer {token}"}
             payload = {
                 "output": {
@@ -65,18 +66,19 @@ class PosSession(models.Model):
                 }
             }
             try:
-                _logger.info(f"Siunčiama X-Ataskaita į nSoft: {url}")
                 response = requests.post(url, json=payload, headers=headers, timeout=10)
                 response.raise_for_status()
+                _logger.info("nSoft X-Ataskaita atspausdinta sėkmingai.")
                 return True
             except Exception as e:
                 _logger.error(f"nSoft X-Ataskaitos klaida: {e}")
                 return False
+        return False
 
     def _send_nsoft_z_report(self):
         for session in self:
             api_url, pos_id, token = self._get_nsoft_credentials(session)
-            url = f"{api_url.rstrip('/')}/api/cr/{pos_id}/fis-day"
+            url = f"{api_url.rstrip('/')}/cr/{pos_id}/fis-day"
             headers = {"Authorization": f"Bearer {token}"}
             payload = {
                 "output": {
@@ -85,42 +87,25 @@ class PosSession(models.Model):
                 }
             }
             try:
-                _logger.info(f"Siunčiama Z-Ataskaita į nSoft: {url}")
-                response = requests.post(url, json=payload, headers=headers, timeout=10)
-                response.raise_for_status()
+                requests.post(url, json=payload, headers=headers, timeout=10)
             except Exception as e:
                 _logger.error(f"nSoft Z-Ataskaitos klaida: {e}")
 
     def _send_nsoft_cash_operation(self, direction, amount):
         for session in self:
             api_url, pos_id, token = self._get_nsoft_credentials(session)
-            url = f"{api_url.rstrip('/')}/api/cr/{pos_id}/non-fis-doc"
+            url = f"{api_url.rstrip('/')}/cr/{pos_id}/cash"
             headers = {"Authorization": f"Bearer {token}"}
-            
-            op_name = "Pinigų įnešimas (Cash In)"
-            if direction == 'out' or amount < 0:
-                op_name = "Pinigų išėmimas (Cash Out)"
-                
-            text_line = f"{op_name}: {abs(amount):.2f} EUR"
             
             payload = {
                 "output": {
                     "format": "native",
                     "lineWidth": 80
                 },
-                "name": op_name,
-                "lines": [
-                    {
-                        "type": "text",
-                        "content": text_line,
-                        "format": "normal",
-                        "align": "left"
-                    }
-                ]
+                "direction": direction,
+                "amount": float(amount)
             }
             try:
-                _logger.info(f"Siunčiamas pinigų judėjimas į nSoft ({url}) | {text_line}")
-                response = requests.post(url, json=payload, headers=headers, timeout=10)
-                response.raise_for_status()
+                requests.post(url, json=payload, headers=headers, timeout=10)
             except Exception as e:
                 _logger.error(f"nSoft Pinigų judėjimo klaida: {e}")
