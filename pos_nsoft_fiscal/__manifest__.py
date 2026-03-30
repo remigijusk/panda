@@ -5,7 +5,7 @@
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'description': """
-        v1.51.0: Galutinai pašalinti nestabilūs POS JS failai. X ataskaitos mygtukas patikimai perkeltas į backend (pos.session form view), garantuojant 100% stabilumą.
+        v1.51.0: Galutinai pašalinti nestabilūs POS naršyklės failai. X ataskaitos mygtukas patikimai perkeltas į backend (pos.session form view), garantuojant 100% stabilumą.
     """,
     'author': 'Remigijus Kubilius',
     'depends': ['point_of_sale'],
