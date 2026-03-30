@@ -54,7 +54,7 @@ class PosSession(models.Model):
         return api_url, pos_id, token
 
     def print_nsoft_x_report(self):
-        """Šią funkciją iškvies POS ekrano mygtukas"""
+        """Iškviečiama per backend mygtuką"""
         for session in self:
             api_url, pos_id, token = self._get_nsoft_credentials(session)
             url = f"{api_url.rstrip('/')}/cr/{pos_id}/cur-day"
@@ -68,12 +68,30 @@ class PosSession(models.Model):
             try:
                 response = requests.post(url, json=payload, headers=headers, timeout=10)
                 response.raise_for_status()
-                _logger.info("nSoft X-Ataskaita atspausdinta sėkmingai.")
-                return True
+                # Grąžina žalią sėkmės lentelę Odoo lange
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'Pavyko!',
+                        'message': 'X Ataskaita sėkmingai išsiųsta į spausdintuvą.',
+                        'type': 'success',
+                        'sticky': False,
+                    }
+                }
             except Exception as e:
                 _logger.error(f"nSoft X-Ataskaitos klaida: {e}")
-                return False
-        return False
+                # Grąžina raudoną klaidos lentelę
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'Klaida',
+                        'message': f'Nepavyko atspausdinti X ataskaitos.',
+                        'type': 'danger',
+                        'sticky': True,
+                    }
+                }
 
     def _send_nsoft_z_report(self):
         for session in self:
