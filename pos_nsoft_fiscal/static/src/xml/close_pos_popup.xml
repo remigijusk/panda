@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-inherit="point_of_sale.ClosePosPopup" t-inherit-mode="extension" owl="1">
+        <xpath expr="//footer" position="inside">
+            <button class="button btn btn-light" t-on-click="printXReport">
+                <i class="fa fa-print me-1"/> X Ataskaita
+            </button>
+        </xpath>
+    </t>
+</templates>
