@@ -57,7 +57,10 @@ class PosSession(models.Model):
         """Iškviečiama per backend mygtuką"""
         for session in self:
             api_url, pos_id, token = self._get_nsoft_credentials(session)
-            url = f"{api_url.rstrip('/')}/cr/{pos_id}/cur-day"
+            
+            # PAKEISTA: Bandom standartinį x-report adresą vietoje cur-day
+            url = f"{api_url.rstrip('/')}/cr/{pos_id}/x-report"
+            
             headers = {"Authorization": f"Bearer {token}"}
             payload = {
                 "output": {
@@ -68,7 +71,6 @@ class PosSession(models.Model):
             try:
                 response = requests.post(url, json=payload, headers=headers, timeout=10)
                 response.raise_for_status()
-                # Grąžina žalią sėkmės lentelę Odoo lange
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
@@ -81,7 +83,6 @@ class PosSession(models.Model):
                 }
             except Exception as e:
                 _logger.error(f"nSoft X-Ataskaitos klaida: {e}")
-                # Grąžina raudoną klaidos lentelę
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
