@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.38.0',
+    'version': '19.0.1.39.0',
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'description': """
-        v1.38.0: Ištaisyta Odoo 19 try_cash_in_out klaida (pridėti *args, **kwargs). Pinigų judėjimas dabar pilnai veikia.
-        v1.37.0: Pridėtas automatinis Z ataskaitos (fis-day) formavimas uždarant pamainą ir pinigų likučio (cash-in/out) įnešimas.
+        v1.39.0: Pridėtas Authorization Bearer token į Z ataskaitos ir cash-in/out API užklausas.
     """,
     'author': 'Remigijus Kubilius',
     'depends': ['point_of_sale'],
