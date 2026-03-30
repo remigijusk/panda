@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
-    <t t-name="pos_nsoft_fiscal.XReportButton" owl="1">
+    <t t-name="pos_nsoft_fiscal.XReportButton">
         <button class="control-button btn btn-light rounded-0 font-weight-bolder" t-on-click="onClick">
-            <i class="fa fa-print me-1" role="img" aria-label="X Ataskaita" title="X Ataskaita" />
+            <i class="fa fa-print me-1" />
             <span>X Ataskaita</span>
         </button>
     </t>
