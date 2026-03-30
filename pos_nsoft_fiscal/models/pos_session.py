@@ -25,9 +25,10 @@ class PosSession(models.Model):
             self._send_nsoft_cash_operation('in', cashbox_value)
         return res
 
-    def try_cash_in_out(self, _type, amount, reason, extras):
+    def try_cash_in_out(self, _type, amount, reason, extras, *args, **kwargs):
         # Veikia, jei kasininkas vidury dienos daro įnešimą/išėmimą per kasos langą
-        res = super(PosSession, self).try_cash_in_out(_type, amount, reason, extras)
+        # Pataisyta, kad priimtų visus papildomus Odoo 19 kintamuosius (*args, **kwargs)
+        res = super(PosSession, self).try_cash_in_out(_type, amount, reason, extras, *args, **kwargs)
         if amount > 0:
             self._send_nsoft_cash_operation(_type, amount)
         return res
