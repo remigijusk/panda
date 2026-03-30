@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.51.0',
+    'version': '19.0.1.52.0',
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'description': """
-        v1.51.0: Galutinai pašalinti nestabilūs POS naršyklės failai. X ataskaitos mygtukas patikimai perkeltas į backend (pos.session form view), garantuojant 100% stabilumą.
+        v1.52.0: Pakeistas X ataskaitos API URL iš /cur-day į /x-report.
     """,
     'author': 'Remigijus Kubilius',
     'depends': ['point_of_sale'],
