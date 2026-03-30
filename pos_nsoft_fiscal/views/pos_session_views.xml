@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pos_session_form_nsoft" model="ir.ui.view">
+        <field name="name">pos.session.form.nsoft</field>
+        <field name="model">pos.session</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_session_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="print_nsoft_x_report" type="object" string="Spausdinti X Ataskaitą" class="oe_highlight" invisible="state != 'opened'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
