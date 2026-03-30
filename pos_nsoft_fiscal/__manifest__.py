@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.49.0',
+    'version': '19.0.1.50.0',
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'description': """
-        v1.49.0: X Ataskaitos mygtukas sėkmingai integruotas į pagrindinį POS langą per pos_control_buttons registrą.
+        v1.50.0: Ištaisyta fatališka XML krovimo klaida (grąžintas owl="1"). X Ataskaitos mygtukas dabar sėkmingai kraunasi POS ekrane.
     """,
     'author': 'Remigijus Kubilius',
     'depends': ['point_of_sale'],
