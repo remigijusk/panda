@@ -54,13 +54,10 @@ class PosSession(models.Model):
         return api_url, pos_id, token
 
     def print_nsoft_x_report(self):
-        """Iškviečiama per backend mygtuką"""
         for session in self:
             api_url, pos_id, token = self._get_nsoft_credentials(session)
-            
-            # PAKEISTA: Bandom standartinį x-report adresą vietoje cur-day
+            # Spėjame, kad adresas gali būti /x-report
             url = f"{api_url.rstrip('/')}/cr/{pos_id}/x-report"
-            
             headers = {"Authorization": f"Bearer {token}"}
             payload = {
                 "output": {
@@ -81,23 +78,28 @@ class PosSession(models.Model):
                         'sticky': False,
                     }
                 }
-            except Exception as e:
-                _logger.error(f"nSoft X-Ataskaitos klaida: {e}")
+            except requests.exceptions.HTTPError as e:
+                # ŠNIPAS: Ištraukiame tikrąjį nSoft serverio atsakymą!
+                error_body = e.response.text if e.response else "Nėra atsakymo kūno"
+                _logger.error(f"nSoft X-Ataskaitos HTTP klaida: {e} | Serverio žinutė: {error_body}")
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
                     'params': {
                         'title': 'Klaida',
-                        'message': f'Nepavyko atspausdinti X ataskaitos.',
+                        'message': f'Serverio atmetimas. Žiūrėti logus.',
                         'type': 'danger',
                         'sticky': True,
                     }
                 }
+            except Exception as e:
+                _logger.error(f"nSoft X-Ataskaitos kritinė klaida: {e}")
 
     def _send_nsoft_z_report(self):
         for session in self:
             api_url, pos_id, token = self._get_nsoft_credentials(session)
-            url = f"{api_url.rstrip('/')}/cr/{pos_id}/fis-day"
+            # Spėjame, kad Z ataskaita yra /z-report
+            url = f"{api_url.rstrip('/')}/cr/{pos_id}/z-report"
             headers = {"Authorization": f"Bearer {token}"}
             payload = {
                 "output": {
@@ -106,9 +108,15 @@ class PosSession(models.Model):
                 }
             }
             try:
-                requests.post(url, json=payload, headers=headers, timeout=10)
+                response = requests.post(url, json=payload, headers=headers, timeout=10)
+                response.raise_for_status()
+                _logger.info("Z ataskaita sėkmingai išsiųsta!")
+            except requests.exceptions.HTTPError as e:
+                # ŠNIPAS Z ataskaitai!
+                error_body = e.response.text if e.response else "Nėra atsakymo kūno"
+                _logger.error(f"nSoft Z-Ataskaitos HTTP klaida: {e} | Serverio žinutė: {error_body}")
             except Exception as e:
-                _logger.error(f"nSoft Z-Ataskaitos klaida: {e}")
+                _logger.error(f"nSoft Z-Ataskaitos kritinė klaida: {e}")
 
     def _send_nsoft_cash_operation(self, direction, amount):
         for session in self:
