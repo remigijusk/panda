@@ -1,6 +1,7 @@
 {
     'name': 'Lietuvos KPO ir KIO orderiai',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.3.0',
+    'author': 'Remigijus Kubilius',
     'category': 'Accounting/Localizations',
     'summary': 'Pritaikyta Lietuvos rinkai: Kasos pajamų ir išlaidų orderių spausdinimas PDF formatu',
     'description': """
