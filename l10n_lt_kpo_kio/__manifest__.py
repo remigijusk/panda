@@ -1,13 +1,13 @@
 {
-    'name': 'Lietuvos KPO ir KIO orderiai',
-    'version': '19.0.2.0.0',
+    'name': 'Lietuvos KPO ir KIO orderiai (Suderinimo langui)',
+    'version': '19.0.3.0.0',
     'author': 'Remigijus Kubilius',
     'category': 'Accounting/Localizations',
-    'summary': 'Tradiciniai KPO ir KIO orderiai iš Žurnalo įrašų (account.move) su kvitu',
+    'summary': 'KPO/KIO spausdinimas tiesiai iš Banko/Kasos suderinimo eilučių (Bank Statements)',
     'description': """
-        Modulis prideda klasikinės formos KPO ir KIO spausdinimą su kvito šaknele.
-        Veikia tiesiogiai iš Žurnalo įrašų (account.move) ir kasos suderinimo lango.
-        Integruotas tikslus lietuviškas sumos vertimas į žodžius.
+        Modulis prideda klasikinės formos KPO/KIO spausdinimą.
+        Pritaikyta veikti TIESIOGIAI iš "Banko sąskaitos suderinimas" lango (account.bank.statement.line).
+        Pilnai atitinka LT reikalavimus, įskaitant sumos vertimą į žodžius.
     """,
     'depends': ['account'],
     'data': [
