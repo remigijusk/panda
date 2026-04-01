@@ -12,8 +12,6 @@ class AccountPayment(models.Model):
     def _compute_lt_amount_in_words(self):
         for payment in self:
             if payment.currency_id:
-                # Odoo standartizuotas vertimas į žodžius. 
-                # Kad veiktų taisyklingai lietuviškai, įsitikinkite, kad Odoo kalbos nustatymuose įdiegta LT kalba.
                 payment.lt_amount_in_words = payment.currency_id.amount_to_text(payment.amount)
             else:
                 payment.lt_amount_in_words = ""
