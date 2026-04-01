@@ -1,67 +1,187 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <template id="report_kpo_kio_document">
+    <template id="report_kpo_kio_template">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
-                <t t-call="web.external_layout">
-                    <div class="page" style="font-size: 14px;">
+                <t t-call="web.basic_layout">
+                    <div class="page" style="font-family: Arial, sans-serif; font-size: 13px; color: #000;">
                         
-                        <div class="row mt-4 mb-4">
+                        <div class="row">
                             <div class="col-12 text-center">
-                                <h3>
-                                    <strong t-if="o.payment_type == 'inbound'">KASOS PAJAMŲ ORDERIS</strong>
-                                    <strong t-if="o.payment_type == 'outbound'">KASOS IŠLAIDŲ ORDERIS</strong>
-                                </h3>
-                                <div>Serija ir numeris: <strong t-field="o.name"/></div>
-                                <div>Data: <span t-field="o.date"/></div>
+                                <span style="font-size: 10px;" t-field="o.company_id.name"/>, k. <span style="font-size: 10px;" t-field="o.company_id.vat"/><br/>
+                                <span style="font-size: 10px;">(ūkio subjekto pavadinimas, kodas)</span>
                             </div>
                         </div>
 
-                        <table class="table table-sm table-bordered mt-4">
-                            <tr>
-                                <td width="35%">
-                                    <strong><t t-if="o.payment_type == 'inbound'">Iš ko gauta:</t>
-                                    <t t-if="o.payment_type == 'outbound'">Kam išmokėta:</t></strong>
-                                </td>
-                                <td>
-                                    <span t-field="o.partner_id.name"/><br/>
-                                    <t t-if="o.partner_id.vat">Įmonės kodas / PVM: <span t-field="o.partner_id.vat"/></t>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Pagrindas:</strong></td>
-                                <td><span t-field="o.memo"/></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Suma:</strong></td>
-                                <td><strong t-field="o.amount"/> <span t-field="o.currency_id.symbol"/></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Suma žodžiu:</strong></td>
-                                <td><span t-field="o.lt_amount_in_words"/></td>
-                            </tr>
+                        <div class="row mt-3 mb-2">
+                            <div class="col-12 text-center">
+                                <h3 style="margin:0; font-weight: bold;">
+                                    <t t-if="o.kpo_kio_type == 'kpo'">KASOS PAJAMŲ ORDERIS</t>
+                                    <t t-if="o.kpo_kio_type == 'kio'">KASOS IŠLAIDŲ ORDERIS</t>
+                                    <t t-if="not o.kpo_kio_type">KASOS ORDERIS</t>
+                                </h3>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-12 text-center">
+                                <span style="font-weight: bold; font-size: 16px;">
+                                    Serija: ________ Nr. <span style="border: 2px solid black; padding: 2px 10px;"><t t-esc="o.name.split('/')[-1] if o.name else ''"/></span>
+                                </span><br/>
+                                <span><span t-field="o.date"/></span>
+                            </div>
+                        </div>
+
+                        <table class="table table-bordered table-sm" style="border: 2px solid black; border-collapse: collapse; text-align: center; margin-bottom: 20px;">
+                            <thead>
+                                <tr>
+                                    <th style="border: 2px solid black; width: 25%;">Korespondentinė sąskaita, subsąskaita</th>
+                                    <th style="border: 2px solid black; width: 25%;">Analitinės apskaitos šifras</th>
+                                    <th style="border: 2px solid black; width: 25%;" colspan="2">Suma</th>
+                                    <th style="border: 2px solid black; width: 25%;">Tikslinės paskirties šifras</th>
+                                </tr>
+                                <tr>
+                                    <th style="border: 2px solid black;"></th>
+                                    <th style="border: 2px solid black;"></th>
+                                    <th style="border: 2px solid black; width: 12.5%;">Eur</th>
+                                    <th style="border: 2px solid black; width: 12.5%;">ct</th>
+                                    <th style="border: 2px solid black;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="border: 2px solid black; height: 30px;">
+                                        <t t-if="o.journal_id.default_account_id"><t t-esc="o.journal_id.default_account_id.code"/></t>
+                                    </td>
+                                    <td style="border: 2px solid black;"></td>
+                                    <td style="border: 2px solid black;"><span t-field="o.lt_amount_eur"/></td>
+                                    <td style="border: 2px solid black;"><span t-esc="'{:02d}'.format(o.lt_amount_ct)"/></td>
+                                    <td style="border: 2px solid black;"></td>
+                                </tr>
+                            </tbody>
                         </table>
 
-                        <div class="row" style="margin-top: 80px;">
-                            <div class="col-6">
-                                <span>Vadovas: ___________________________</span><br/>
-                                <span style="font-size: 10px; margin-left: 70px;">(Vardas, pavardė, parašas)</span>
+                        <div style="line-height: 2;">
+                            <div>
+                                <strong t-if="o.kpo_kio_type != 'kio'">Priimta iš </strong>
+                                <strong t-if="o.kpo_kio_type == 'kio'">Išmokėta kam </strong>
+                                <span style="border-bottom: 1px solid black; display: inline-block; width: 85%; padding-left: 10px;">
+                                    <span t-field="o.kpo_partner_name"/>
+                                </span>
                             </div>
-                            <div class="col-6">
-                                <span>Vyriausiasis buhalteris: ___________________________</span><br/>
-                                <span style="font-size: 10px; margin-left: 140px;">(Vardas, pavardė, parašas)</span>
+                            <div class="text-center" style="font-size: 10px; margin-top: -8px;">(ūkio subjekto pavadinimas, pinigus mokančio asmens pareigos, vardas, pavardė, parašas)</div>
+
+                            <div class="mt-2">
+                                <strong>Ūkinės operacijos ar ūkinio įvykio turinys </strong>
+                                <span style="border-bottom: 1px solid black; display: inline-block; width: 62%; padding-left: 10px;">
+                                    <span t-field="o.ref"/>
+                                </span>
+                            </div>
+
+                            <div class="mt-3 text-center">
+                                <span style="font-weight: bold; font-size: 15px; border-bottom: 1px solid black; display: inline-block; min-width: 60%; padding-bottom: 2px;">
+                                    <span t-field="o.lt_amount_words"/>
+                                </span>
+                                <span style="margin-left: 10px;"> Eur. </span>
+                                <span style="font-weight: bold; font-size: 15px; border-bottom: 1px solid black; display: inline-block; min-width: 10%; text-align: center;">
+                                    <span t-esc="'{:02d}'.format(o.lt_amount_ct)"/>
+                                </span>
+                                <span> ct.</span>
+                            </div>
+                            <div class="text-center" style="font-size: 10px; margin-top: -8px;">(suma žodžiais)</div>
+
+                            <div class="mt-2">
+                                <strong>Priedėlis </strong>
+                                <span style="border-bottom: 1px solid black; display: inline-block; width: 90%;">&amp;nbsp;</span>
+                            </div>
+                            <div class="text-center" style="font-size: 10px; margin-top: -8px;">(nurodomi dokumentai, kurių pagrindu priimami į kasą pinigai)</div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                Vyr. buhalteris (buhalteris) <span style="border-bottom: 1px solid black; display: inline-block; width: 70%;">&amp;nbsp;</span>
+                                <div style="font-size: 10px; margin-left: 30%;"> (vardas, pavardė, parašas) </div>
+                            </div>
+                            <div class="col-12 mt-3">
+                                <t t-if="o.kpo_kio_type != 'kio'">Gavo kasininkas</t>
+                                <t t-if="o.kpo_kio_type == 'kio'">Išmokėjo kasininkas</t>
+                                <span style="border-bottom: 1px solid black; display: inline-block; width: 73%;">&amp;nbsp;</span>
+                                <div style="font-size: 10px; margin-left: 30%;"> (vardas, pavardė, parašas) </div>
                             </div>
                         </div>
 
-                        <div class="row" style="margin-top: 50px;">
-                            <div class="col-12">
-                                <span>
-                                    <t t-if="o.payment_type == 'inbound'">Gavo</t>
-                                    <t t-if="o.payment_type == 'outbound'">Išmokėjo</t> kasininkas: ___________________________
-                                </span><br/>
-                                <span style="font-size: 10px; margin-left: 150px;">(Vardas, pavardė, parašas)</span>
+                        <div class="row mt-4 mb-4">
+                            <div class="col-12 text-center" style="border-top: 1px dashed black; position: relative;">
+                                <span style="background: white; padding: 0 10px; position: relative; top: -10px; font-style: italic;">kirpimo linija</span>
                             </div>
                         </div>
+
+                        <div class="row">
+                            <div class="col-12 text-center">
+                                <span style="font-weight: bold; font-size: 16px;">0</span><br/>
+                                <span style="font-size: 10px; border-top: 1px solid black; display: inline-block; width: 40%; padding-top: 2px;">(ūkio subjekto pavadinimas, kodas)</span>
+                            </div>
+                        </div>
+
+                        <div class="row mt-2">
+                            <div class="col-4">
+                                <h5 style="font-weight: bold; margin:0;">
+                                    <t t-if="o.kpo_kio_type != 'kio'">Kasos pajamų orderio</t>
+                                    <t t-if="o.kpo_kio_type == 'kio'">Kasos išlaidų orderio</t><br/>
+                                    KVITAS
+                                </h5>
+                            </div>
+                            <div class="col-8 text-right" style="padding-top: 10px;">
+                                <span style="font-weight: bold; font-size: 16px;">
+                                    Serija: ________ Nr. <span style="border: 2px solid black; padding: 2px 10px;"><t t-esc="o.name.split('/')[-1] if o.name else ''"/></span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div style="line-height: 2; margin-top: 15px;">
+                            <div>
+                                <strong t-if="o.kpo_kio_type != 'kio'">Priimta iš </strong>
+                                <strong t-if="o.kpo_kio_type == 'kio'">Išmokėta kam </strong>
+                                <span style="border-bottom: 1px solid black; display: inline-block; width: 85%; padding-left: 10px;">
+                                    <span t-field="o.kpo_partner_name"/>
+                                </span>
+                            </div>
+                            
+                            <div class="mt-2">
+                                <strong>Ūkinės operacijos ar ūkinio įvykio turinys </strong>
+                                <span style="border-bottom: 1px solid black; display: inline-block; width: 62%; padding-left: 10px;">
+                                    <span t-field="o.ref"/>
+                                </span>
+                            </div>
+
+                            <div class="mt-3 text-center">
+                                <span style="font-weight: bold; font-size: 15px; border-bottom: 1px solid black; display: inline-block; min-width: 60%; padding-bottom: 2px;">
+                                    <span t-field="o.lt_amount_words"/>
+                                </span>
+                                <span style="margin-left: 10px;"> Eur. </span>
+                                <span style="font-weight: bold; font-size: 15px; border-bottom: 1px solid black; display: inline-block; min-width: 10%; text-align: center;">
+                                    <span t-esc="'{:02d}'.format(o.lt_amount_ct)"/>
+                                </span>
+                                <span> ct.</span>
+                            </div>
+
+                            <div class="mt-3 text-center">
+                                <span style="font-weight: bold; border-bottom: 1px solid black; display: inline-block; min-width: 50%;">
+                                    <span t-field="o.date"/>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                Vyr. buhalteris (buhalteris) <span style="border-bottom: 1px solid black; display: inline-block; width: 70%;">&amp;nbsp;</span>
+                            </div>
+                            <div class="col-12 mt-3">
+                                Kasininkas <span style="border-bottom: 1px solid black; display: inline-block; width: 80%;">&amp;nbsp;</span>
+                                <div style="font-size: 10px; margin-left: 30%;"> (vardas, pavardė, parašas) </div>
+                            </div>
+                        </div>
+
                     </div>
                 </t>
             </t>
