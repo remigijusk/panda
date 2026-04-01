@@ -1,14 +1,13 @@
 {
     'name': 'Lietuvos KPO ir KIO orderiai',
-    'version': '19.0.1.3.0',
+    'version': '19.0.2.0.0',
     'author': 'Remigijus Kubilius',
     'category': 'Accounting/Localizations',
-    'summary': 'Pritaikyta Lietuvos rinkai: Kasos pajamų ir išlaidų orderių spausdinimas PDF formatu',
+    'summary': 'Tradiciniai KPO ir KIO orderiai iš Žurnalo įrašų (account.move) su kvitu',
     'description': """
-        Modulis prideda KPO ir KIO spausdinimo funkcionalumą prie mokėjimų (account.payment).
-        - Suma žodžiu
-        - Privalomi rekvizitai (pagrindas, gavėjas/mokėtojas)
-        - PDF generavimas
+        Modulis prideda klasikinės formos KPO ir KIO spausdinimą su kvito šaknele.
+        Veikia tiesiogiai iš Žurnalo įrašų (account.move) ir kasos suderinimo lango.
+        Integruotas tikslus lietuviškas sumos vertimas į žodžius.
     """,
     'depends': ['account'],
     'data': [
