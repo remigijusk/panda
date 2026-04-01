@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_kpo_kio_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page" style="font-size: 14px;">
+                        
+                        <div class="row mt-4 mb-4">
+                            <div class="col-12 text-center">
+                                <h3>
+                                    <strong t-if="o.payment_type == 'inbound'">KASOS PAJAMŲ ORDERIS</strong>
+                                    <strong t-if="o.payment_type == 'outbound'">KASOS IŠLAIDŲ ORDERIS</strong>
+                                </h3>
+                                <div>Serija ir numeris: <strong t-field="o.name"/></div>
+                                <div>Data: <span t-field="o.date"/></div>
+                            </div>
+                        </div>
+
+                        <table class="table table-sm table-bordered mt-4">
+                            <tr>
+                                <td width="35%">
+                                    <strong><t t-if="o.payment_type == 'inbound'">Iš ko gauta:</t>
+                                    <t t-if="o.payment_type == 'outbound'">Kam išmokėta:</t></strong>
+                                </td>
+                                <td>
+                                    <span t-field="o.partner_id.name"/><br/>
+                                    <t t-if="o.partner_id.vat">Įmonės kodas / PVM: <span t-field="o.partner_id.vat"/></t>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Pagrindas:</strong></td>
+                                <td><span t-field="o.ref"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Suma:</strong></td>
+                                <td><strong t-field="o.amount"/> <span t-field="o.currency_id.symbol"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Suma žodžiu:</strong></td>
+                                <td><span t-field="o.lt_amount_in_words"/></td>
+                            </tr>
+                        </table>
+
+                        <div class="row" style="margin-top: 80px;">
+                            <div class="col-6">
+                                <span>Vadovas: ___________________________</span><br/>
+                                <span style="font-size: 10px; margin-left: 70px;">(Vardas, pavardė, parašas)</span>
+                            </div>
+                            <div class="col-6">
+                                <span>Vyriausiasis buhalteris: ___________________________</span><br/>
+                                <span style="font-size: 10px; margin-left: 140px;">(Vardas, pavardė, parašas)</span>
+                            </div>
+                        </div>
+
+                        <div class="row" style="margin-top: 50px;">
+                            <div class="col-12">
+                                <span>
+                                    <t t-if="o.payment_type == 'inbound'">Gavo</t>
+                                    <t t-if="o.payment_type == 'outbound'">Išmokėjo</t> kasininkas: ___________________________
+                                </span><br/>
+                                <span style="font-size: 10px; margin-left: 150px;">(Vardas, pavardė, parašas)</span>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
