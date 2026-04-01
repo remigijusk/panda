@@ -30,7 +30,7 @@
                             </tr>
                             <tr>
                                 <td><strong>Pagrindas:</strong></td>
-                                <td><span t-field="o.ref"/></td>
+                                <td><span t-field="o.memo"/></td>
                             </tr>
                             <tr>
                                 <td><strong>Suma:</strong></td>
