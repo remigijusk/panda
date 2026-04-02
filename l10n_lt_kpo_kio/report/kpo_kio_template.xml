@@ -7,7 +7,7 @@
                     <div class="page" style="font-family: Arial, sans-serif; font-size: 15px; color: black;">
                         
                         <div style="text-align: center; margin-bottom: 20px;">
-                            <span style="font-size: 12px;" t-field="o.company_id.name"/>, Įm. kodas: <span style="font-size: 12px;" t-field="o.company_id.vat"/><br/>
+                            <span style="font-size: 12px;" t-field="o.company_id.name"/>, Įm. kodas: <span style="font-size: 12px;" t-esc="o.company_id.company_registry or o.company_id.vat"/><br/>
                             <span style="font-size: 10px; border-top: 1px solid black; padding-top: 2px;">(ūkio subjekto pavadinimas, kodas)</span>
                             
                             <h2 style="margin-top: 15px; font-weight: bold; text-transform: uppercase;">
@@ -15,7 +15,7 @@
                                 <t t-if="o.kpo_kio_type == 'kio'">KASOS IŠLAIDŲ ORDERIS</t>
                             </h2>
                             <div style="font-size: 16px;">
-                                Serija ________ Nr. <strong style="border: 2px solid black; padding: 2px 10px;"><t t-esc="o.name"/></strong>
+                                Serija, Nr. <strong style="border: 2px solid black; padding: 2px 10px;"><t t-esc="o.name"/></strong>
                             </div>
                             <div style="margin-top: 5px;">Data: <strong t-field="o.date"/></div>
                         </div>
@@ -71,19 +71,21 @@
                             </div>
 
                             <div style="margin-top: 10px;">
-                                <strong>Priedėlis: </strong>
-                                <span style="border-bottom: 1px solid black; padding: 0 10px;">_______________________________________________________________</span>
+                                <strong t-if="o.kpo_kio_type == 'kpo'">Mokėtojas: </strong>
+                                <strong t-if="o.kpo_kio_type == 'kio'">Gavėjas: </strong>
+                                <span style="border-bottom: 1px solid black; display: inline-block; width: 70%;">&amp;nbsp;</span>
+                                <div style="font-size: 11px; margin-left: 90px; margin-top: -5px; color: #555;">(vardas, pavardė, parašas)</div>
                             </div>
                         </div>
 
                         <div style="margin-top: 30px; margin-bottom: 40px;">
                             <div style="float: left; width: 48%;">
                                 <strong>Vyr. buhalteris: </strong> ________________________<br/>
-                                <span style="font-size: 10px; margin-left: 120px;">(parašas)</span>
+                                <span style="font-size: 11px; margin-left: 120px; color: #555;">(parašas)</span>
                             </div>
                             <div style="float: right; width: 48%;">
-                                <strong>Kasininkas: </strong> ________________________<br/>
-                                <span style="font-size: 10px; margin-left: 90px;">(parašas)</span>
+                                <strong>Kasininkas: </strong> <span t-esc="o.cashier_name"/> ________________<br/>
+                                <span style="font-size: 11px; margin-left: 140px; color: #555;">(parašas)</span>
                             </div>
                             <div style="clear: both;"></div>
                         </div>
@@ -99,7 +101,7 @@
                                     <t t-if="o.kpo_kio_type == 'kio'">Kasos išlaidų orderio KVITAS</t>
                                 </h3>
                                 <div style="margin-top: 5px;">
-                                    Serija ________ Nr. <strong style="border: 2px solid black; padding: 2px 10px;"><t t-esc="o.name"/></strong>
+                                    Serija, Nr. <strong style="border: 2px solid black; padding: 2px 10px;"><t t-esc="o.name"/></strong>
                                 </div>
                             </div>
 
@@ -125,14 +127,21 @@
                                         <span t-field="o.lt_amount_words"/> Eur, <span t-esc="'{:02d}'.format(o.lt_amount_ct)"/> ct.
                                     </strong>
                                 </div>
+                                
+                                <div style="margin-top: 10px;">
+                                    <strong t-if="o.kpo_kio_type == 'kpo'">Mokėtojas: </strong>
+                                    <strong t-if="o.kpo_kio_type == 'kio'">Gavėjas: </strong>
+                                    <span style="border-bottom: 1px solid black; display: inline-block; width: 60%;">&amp;nbsp;</span>
+                                </div>
+
                                 <div style="margin-top: 10px;">
                                     <strong>Data: </strong> <span t-field="o.date"/>
                                 </div>
                             </div>
                             
                             <div style="margin-top: 30px;">
-                                <strong>Kasininkas: </strong> ________________________
-                                <span style="font-size: 10px; margin-left: 10px;">(parašas)</span>
+                                <strong>Kasininkas: </strong> <span t-esc="o.cashier_name"/> ________________________<br/>
+                                <span style="font-size: 11px; margin-left: 100px; color: #555;">(parašas)</span>
                             </div>
                         </div>
 
