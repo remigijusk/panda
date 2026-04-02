@@ -11,17 +11,21 @@ class AccountBankStatementLine(models.Model):
     lt_amount_words = fields.Char(compute='_compute_lt_amounts')
     lt_amount_eur = fields.Integer(compute='_compute_lt_amounts')
     lt_amount_ct = fields.Integer(compute='_compute_lt_amounts')
+    cashier_name = fields.Char(compute='_compute_cashier_name')
 
     @api.depends('amount')
     def _compute_kpo_kio_type(self):
         for line in self:
-            # Suderinimo eilutėse teigiama suma (amount) visada yra įplaukos (KPO), neigiama - išlaidos (KIO)
             line.kpo_kio_type = 'kpo' if line.amount > 0 else 'kio'
+
+    def _compute_cashier_name(self):
+        for line in self:
+            # Paima vardą ir pavardę žmogaus, kuris šiuo metu generuoja ataskaitą
+            line.cashier_name = self.env.user.name
 
     @api.depends('amount')
     def _compute_lt_amounts(self):
         for line in self:
-            # Paimame absoliučią sumą, nes KIO atveju amount bus su minusu
             abs_amount = abs(line.amount or 0.0)
             eur = int(abs_amount)
             ct = int(round((abs_amount - eur) * 100))
