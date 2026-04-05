@@ -22,9 +22,7 @@
                             <span style="font-size: 12px;" t-field="o.company_id.name"/>, Įm. kodas: <span style="font-size: 12px;" t-esc="o.company_id.company_registry or o.company_id.vat"/><br/>
                             <span style="font-size: 10px; border-top: 1px solid black; padding-top: 2px;">(ūkio subjekto pavadinimas, kodas)</span>
                             <h2 style="margin-top: 10px; font-weight: bold; text-transform: uppercase;">KASOS PAJAMŲ ORDERIS</h2>
-                            <div style="font-size: 16px;">
-                                Serija, Nr. <strong style="border: 2px solid black; padding: 2px 10px;"><t t-esc="o.pos_reference"/></strong>
-                            </div>
+                            <div style="font-size: 16px;">Serija, Nr. <strong style="border: 2px solid black; padding: 2px 10px;"><t t-esc="o.pos_reference"/></strong></div>
                             <div style="margin-top: 5px;">Data: <strong t-field="o.date_order" t-options='{"widget": "date"}'/></div>
                         </div>
 
@@ -44,81 +42,33 @@
                         </table>
 
                         <div style="margin-bottom: 15px; line-height: 2;">
-                            <div>
-                                <strong>Priimta iš: </strong>
-                                <span style="border-bottom: 1px solid black; padding: 0 10px;">
-                                    <t t-if="o.partner_id">
-                                        <span t-field="o.partner_id.name"/> <t t-if="o.partner_id.vat">(PVM: <span t-field="o.partner_id.vat"/>)</t>
-                                    </t>
-                                    <t t-else="">______________________________________________________</t>
-                                </span>
-                            </div>
-                            <div style="margin-top: 5px;">
-                                <strong>Pagrindas: </strong>
-                                <span style="border-bottom: 1px solid black; padding: 0 10px;"><span t-field="o.pos_reference"/> (POS Užsakymas)</span>
-                            </div>
-                            <div style="margin-top: 5px;">
-                                <strong>Suma žodžiais: </strong>
-                                <strong style="border-bottom: 1px solid black; padding: 0 10px; text-transform: capitalize;"><span t-field="o.lt_amount_words"/></strong>
-                                <span> Eur, </span><strong style="border-bottom: 1px solid black; padding: 0 5px;"><span t-esc="'{:02d}'.format(o.lt_amount_ct)"/></strong><span> ct.</span>
-                            </div>
-                            <div style="margin-top: 5px;">
-                                <strong>Mokėtojas: </strong><span style="border-bottom: 1px solid black; display: inline-block; width: 70%;">&#160;</span>
-                                <div style="font-size: 11px; margin-left: 90px; margin-top: -5px; color: #555;">(vardas, pavardė, parašas)</div>
-                            </div>
+                            <div><strong>Priimta iš: </strong><span style="border-bottom: 1px solid black; padding: 0 10px;"><t t-if="o.partner_id"><span t-field="o.partner_id.name"/> <t t-if="o.partner_id.vat">(PVM: <span t-field="o.partner_id.vat"/>)</t></t><t t-else="">______________________________________________________</t></span></div>
+                            <div style="margin-top: 5px;"><strong>Pagrindas: </strong><span style="border-bottom: 1px solid black; padding: 0 10px;"><span t-field="o.pos_reference"/> (POS Užsakymas)</span></div>
+                            <div style="margin-top: 5px;"><strong>Suma žodžiais: </strong><strong style="border-bottom: 1px solid black; padding: 0 10px; text-transform: capitalize;"><span t-field="o.lt_amount_words"/></strong><span> Eur, </span><strong style="border-bottom: 1px solid black; padding: 0 5px;"><span t-esc="'{:02d}'.format(o.lt_amount_ct)"/></strong><span> ct.</span></div>
+                            <div style="margin-top: 5px;"><strong>Mokėtojas: </strong><span style="border-bottom: 1px solid black; display: inline-block; width: 70%;">&#160;</span></div>
                         </div>
 
                         <div style="margin-top: 20px; margin-bottom: 25px;">
-                            <div style="float: left; width: 48%;">
-                                <strong>Vyr. buhalteris: </strong> <span style="display: inline-block; width: 120px; border-bottom: 1px solid black;">&#160;</span><br/>
-                                <span style="font-size: 11px; margin-left: 140px; color: #555;">(parašas)</span>
-                            </div>
+                            <div style="float: left; width: 48%;"><strong>Vyr. buhalteris: </strong> <span style="display: inline-block; width: 120px; border-bottom: 1px solid black;">&#160;</span></div>
                             <div style="float: right; width: 48%;">
                                 <strong>Kasininkas: </strong> <span t-esc="o.cashier_name"/> 
-                                <t t-if="o.cashier_signature">
-                                    <img t-att-src="image_data_uri(o.cashier_signature)" style="max-height: 40px; vertical-align: bottom; margin-left: 10px; margin-bottom: -10px;"/>
-                                </t>
-                                <t t-else="">
-                                    <span style="display: inline-block; width: 100px; border-bottom: 1px solid black;">&#160;</span>
-                                </t>
-                                <br/>
-                                <span style="font-size: 11px; margin-left: 120px; color: #555;">(parašas)</span>
+                                <t t-if="o.cashier_signature"><img t-att-src="image_data_uri(o.cashier_signature)" style="max-height: 40px; vertical-align: bottom; margin-left: 10px; margin-bottom: -10px;"/></t>
+                                <t t-else=""><span style="display: inline-block; width: 100px; border-bottom: 1px solid black;">&#160;</span></t>
                             </div>
                             <div style="clear: both;"></div>
                         </div>
 
                         <div style="border-top: 1px dashed black; padding-top: 15px; margin-top: 15px;">
-                            <div style="text-align: center; position: relative; top: -25px;"><span style="background: white; padding: 0 10px; font-style: italic; font-size: 12px;">kirpimo linija</span></div>
-                            <div style="text-align: center; margin-bottom: 10px;">
-                                <span style="font-size: 12px;" t-field="o.company_id.name"/>, Įm. kodas: <span style="font-size: 12px;" t-esc="o.company_id.company_registry or o.company_id.vat"/><br/>
-                            </div>
-                            <div style="text-align: center;">
-                                <h3 style="margin:0; font-weight: bold; text-transform: uppercase;">Kasos pajamų orderio KVITAS</h3>
-                                <div style="margin-top: 5px;">Serija, Nr. <strong style="border: 2px solid black; padding: 2px 10px;"><t t-esc="o.pos_reference"/></strong></div>
-                            </div>
+                            <div style="text-align: center; margin-bottom: 10px;"><span style="font-size: 12px;" t-field="o.company_id.name"/></div>
+                            <div style="text-align: center;"><h3 style="margin:0; font-weight: bold; text-transform: uppercase;">Kasos pajamų orderio KVITAS</h3></div>
                             <div style="margin-top: 10px; line-height: 2;">
-                                <div>
-                                    <strong>Priimta iš: </strong><span style="border-bottom: 1px solid black; padding: 0 10px;">
-                                        <t t-if="o.partner_id"><span t-field="o.partner_id.name"/></t><t t-else="">___________________________________________</t>
-                                    </span>
-                                </div>
-                                <div style="margin-top: 5px;"><strong>Pagrindas: </strong><span style="border-bottom: 1px solid black; padding: 0 10px;"><span t-field="o.pos_reference"/></span></div>
-                                <div style="margin-top: 5px;">
-                                    <strong>Suma: </strong><strong style="border-bottom: 1px solid black; padding: 0 10px;"><span t-field="o.lt_amount_eur"/> Eur, <span t-esc="'{:02d}'.format(o.lt_amount_ct)"/> ct. (<span t-field="o.lt_amount_words"/>)</strong>
-                                </div>
-                                <div style="margin-top: 5px;"><strong>Mokėtojas: </strong><span style="border-bottom: 1px solid black; display: inline-block; width: 60%;">&#160;</span></div>
+                                <div><strong>Priimta iš: </strong><span style="border-bottom: 1px solid black; padding: 0 10px;"><t t-if="o.partner_id"><span t-field="o.partner_id.name"/></t></span></div>
+                                <div style="margin-top: 5px;"><strong>Suma: </strong><strong style="border-bottom: 1px solid black; padding: 0 10px;"><span t-field="o.lt_amount_eur"/> Eur, <span t-esc="'{:02d}'.format(o.lt_amount_ct)"/> ct. (<span t-field="o.lt_amount_words"/>)</strong></div>
                                 <div style="margin-top: 5px;"><strong>Data: </strong> <span t-field="o.date_order" t-options='{"widget": "date"}'/></div>
                             </div>
                             <div style="margin-top: 20px;">
                                 <strong>Kasininkas: </strong> <span t-esc="o.cashier_name"/> 
-                                <t t-if="o.cashier_signature">
-                                    <img t-att-src="image_data_uri(o.cashier_signature)" style="max-height: 40px; vertical-align: bottom; margin-left: 10px; margin-bottom: -10px;"/>
-                                </t>
-                                <t t-else="">
-                                    <span style="display: inline-block; width: 100px; border-bottom: 1px solid black;">&#160;</span>
-                                </t>
-                                <br/>
-                                <span style="font-size: 11px; margin-left: 100px; color: #555;">(parašas)</span>
+                                <t t-if="o.cashier_signature"><img t-att-src="image_data_uri(o.cashier_signature)" style="max-height: 40px; vertical-align: bottom; margin-left: 10px; margin-bottom: -10px;"/></t>
                             </div>
                         </div>
 
