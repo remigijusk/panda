@@ -11,17 +11,22 @@ class AccountBankStatementLine(models.Model):
     lt_amount_words = fields.Char(compute='_compute_lt_amounts')
     lt_amount_eur = fields.Integer(compute='_compute_lt_amounts')
     lt_amount_ct = fields.Integer(compute='_compute_lt_amounts')
-    cashier_name = fields.Char(compute='_compute_cashier_name')
+    
+    cashier_name = fields.Char(compute='_compute_cashier_data')
+    cashier_signature = fields.Binary(compute='_compute_cashier_data')
 
     @api.depends('amount')
     def _compute_kpo_kio_type(self):
         for line in self:
             line.kpo_kio_type = 'kpo' if line.amount > 0 else 'kio'
 
-    def _compute_cashier_name(self):
+    def _compute_cashier_data(self):
         for line in self:
-            # Paima vardą ir pavardę žmogaus, kuris šiuo metu generuoja ataskaitą
             line.cashier_name = self.env.user.name
+            if 'sign_signature' in self.env.user._fields and self.env.user.sign_signature:
+                line.cashier_signature = self.env.user.sign_signature
+            else:
+                line.cashier_signature = False
 
     @api.depends('amount')
     def _compute_lt_amounts(self):
@@ -29,7 +34,6 @@ class AccountBankStatementLine(models.Model):
             abs_amount = abs(line.amount or 0.0)
             eur = int(abs_amount)
             ct = int(round((abs_amount - eur) * 100))
-            
             line.lt_amount_eur = eur
             line.lt_amount_ct = ct
             line.lt_amount_words = self._get_lt_words(eur)
@@ -60,12 +64,10 @@ class AccountBankStatementLine(models.Model):
         rem_mil = num % 1000000
         tho = rem_mil // 1000
         rem = rem_mil % 1000
-
         if mil > 0:
             words += convert_hundreds(mil) + (" milijonai " if mil > 1 else " milijonas ")
         if tho > 0:
             words += convert_hundreds(tho) + (" tūkstančiai " if tho % 10 > 1 and (tho % 100 < 10 or tho % 100 > 20) else " tūkstantis " if tho % 10 == 1 and tho % 100 != 11 else " tūkstančių ")
         if rem > 0:
             words += convert_hundreds(rem)
-
         return words.strip().capitalize()
