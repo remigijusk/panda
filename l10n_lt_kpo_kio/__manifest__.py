@@ -1,6 +1,6 @@
 {
     'name': 'Lietuvos KPO ir KIO orderiai (Suderinimo langui + POS)',
-    'version': '19.0.17.0.0',
+    'version': '19.0.18.0.0',
     'author': 'Remigijus Kubilius',
     'category': 'Accounting/Localizations',
     'summary': 'KPO/KIO spausdinimas su automatiniais parašais ir POS integracija',
@@ -13,6 +13,7 @@
     ],
     'assets': {
         'point_of_sale._assets_pos': [
+            'l10n_lt_kpo_kio/static/src/xml/pos_kpo_button.xml',
             'l10n_lt_kpo_kio/static/src/js/pos_kpo_button.js',
         ],
     },
