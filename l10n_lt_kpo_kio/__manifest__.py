@@ -1,6 +1,6 @@
 {
     'name': 'Lietuvos KPO ir KIO orderiai (Suderinimo langui + POS)',
-    'version': '19.0.10.0.0',
+    'version': '19.0.11.0.0',
     'author': 'Remigijus Kubilius',
     'category': 'Accounting/Localizations',
     'summary': 'KPO/KIO spausdinimas iš banko suderinimo ir tiesiai iš POS',
