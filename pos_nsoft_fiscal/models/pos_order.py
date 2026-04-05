@@ -12,13 +12,25 @@ class PosOrder(models.Model):
 
     @api.model
     def action_send_receipt_to_nsoft(self, order_data):
-        config = self.env['ir.config_parameter'].sudo()
-        api_url = config.get_param('pos_nsoft_fiscal.api_url')
-        pos_id = config.get_param('pos_nsoft_fiscal.pos_id')
-        token = config.get_param('pos_nsoft_fiscal.api_token')
+        # 1. Gauname kasos sesiją ir konfigūraciją iš užsakymo duomenų
+        session_id = order_data.get('pos_session_id')
+        if not session_id:
+            return {'success': True, 'ignored': True}
+            
+        session = self.env['pos.session'].browse(session_id)
+        config = session.config_id
+        
+        # 2. PATIKRA: Ar šiai kasai išvis įjungtas nSoft? Jei ne - tyliai praleidžiame.
+        if not config.nsoft_enabled:
+            return {'success': True, 'ignored': True}
+
+        # Jei įjungtas - imame šios konkrečios kasos API nustatymus
+        api_url = config.nsoft_api_url
+        pos_id = config.nsoft_pos_id
+        token = config.nsoft_token
 
         if not token:
-            return {'success': False, 'error': 'API Token nerastas.'}
+            return {'success': False, 'error': 'API Token nerastas šiai kasai.'}
 
         # Tikroji suma iš JS
         true_total = order_data.get('true_total', 0.0)
