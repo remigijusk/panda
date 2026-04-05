@@ -4,38 +4,44 @@ import { patch } from "@web/core/utils/patch";
 
 patch(ReceiptScreen.prototype, {
     
-    // Šis metodas nusprendžia, ar rodyti mygtuką (susietas su this.isKpoReady XML faile)
-    get isKpoReady() {
+    // Nustato, ar mygtukas matomas, ar paslėptas
+    getKpoBtnStyle() {
         try {
-            // 1. Tikriname, ar įjungta varnelė nustatymuose
-            const pos = this.pos || this.env?.services?.pos;
-            if (!pos || !pos.config || !pos.config.iface_print_kpo) {
-                return false; 
+            // 1. Tikriname nustatymą
+            const config = this.pos?.config || this.env?.services?.pos?.config;
+            if (!config || config.iface_print_kpo === false) {
+                return "display: none;";
             }
-
+            
             // 2. Tikriname, ar naudotas KPO mokėjimo būdas
-            const order = this.currentOrder || this.props?.order || pos.get_order();
-            if (!order) return false;
-
+            const order = this.props?.order || this.currentOrder || (this.pos && this.pos.get_order());
+            if (!order) return "display: none;";
+            
             const lines = typeof order.get_paymentlines === 'function' ? order.get_paymentlines() : (order.paymentlines || []);
-            return lines.some(l => ((l.payment_method && l.payment_method.name) || l.name || '').toUpperCase().includes('KPO'));
+            const hasKpo = lines.some(l => ((l.payment_method && l.payment_method.name) || l.name || '').toUpperCase().includes('KPO'));
+            
+            if (!hasKpo) {
+                return "display: none;";
+            }
+            
+            // Jei viskas tinka - grąžiname mygtuko dizainą (matomą)
+            return "margin-top: 10px; background-color: #00A09D; color: white; border: none; padding: 15px; width: 100%; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer;";
         } catch (e) {
-            console.error(e);
-            return false;
+            console.error("KPO mygtuko stiliaus klaida:", e);
+            return "display: none;"; // Saugiklis: jei klaida, paslepiame mygtuką ir leidžiame dirbti toliau
         }
     },
 
-    // PDF atidarymo komanda paspaudus mygtuką
-    async printKpoPdf() {
+    // PDF spausdinimo funkcija
+    async clickKpoBtn() {
         try {
-            const order = this.currentOrder || this.props?.order || (this.env?.services?.pos && this.env.services.pos.get_order());
-            if (!order) return alert("Nerastas užsakymas.");
+            const order = this.props?.order || this.currentOrder || (this.pos && this.pos.get_order());
+            if (!order) return alert("Sistemos klaida: nerastas užsakymas.");
 
             let backendId = order.backendId || order.id;
-            
-            // Jei nėra ID, gauname jį tiesiai iš serverio pagal čekio numerį
+            let posRef = order.name || order.pos_reference;
+
             if (!backendId || typeof backendId !== 'number') {
-                let posRef = order.name || order.pos_reference;
                 if (posRef) {
                     const res = await this.env.services.orm.search('pos.order', [['pos_reference', '=', posRef]], { limit: 1 });
                     if (res && res.length > 0) {
@@ -47,11 +53,11 @@ patch(ReceiptScreen.prototype, {
             if (backendId && typeof backendId === 'number') {
                 window.open(`/report/pdf/l10n_lt_kpo_kio.action_report_kpo_kio_pos/${backendId}`, '_blank');
             } else {
-                alert("Užsakymas dar išsaugomas. Bandykite dar kartą po 2 sekundžių.");
+                alert("Užsakymas dar išsaugomas serveryje. Palaukite kelias sekundes ir spauskite vėl.");
             }
         } catch (error) {
-            console.error("Spausdinimo klaida:", error);
-            alert("Klaida spausdinant KPO.");
+            console.error("KPO spausdinimo klaida:", error);
+            alert("Įvyko sistemos klaida bandant spausdinti.");
         }
     }
 });
