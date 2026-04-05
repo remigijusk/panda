@@ -1,29 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="res_config_settings_view_form" model="ir.ui.view">
-        <field name="name">res.config.settings.view.form.inherit.pos_nsoft_fiscal</field>
+    <record id="res_config_settings_view_form_nsoft" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.pos.nsoft</field>
         <field name="model">res.config.settings</field>
         <field name="inherit_id" ref="point_of_sale.res_config_settings_view_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//block[@id='pos_accounting_section']" position="after">
-                <block title="nSoft Virtuali Fiskalizacija (i.EKA)" id="pos_nsoft_fiscal_section">
-                    <setting id="nsoft_api_settings" string="API Nustatymai" help="nVirtualFiscal prisijungimo duomenys">
-                        <div class="content-group">
-                            <div class="row mt16">
-                                <label for="pos_nsoft_api_url" class="col-lg-3 o_light_label"/>
-                                <field name="pos_nsoft_api_url"/>
-                            </div>
-                            <div class="row mt16">
-                                <label for="pos_nsoft_pos_id" class="col-lg-3 o_light_label"/>
-                                <field name="pos_nsoft_pos_id"/>
-                            </div>
-                            <div class="row mt16">
-                                <label for="pos_nsoft_api_token" class="col-lg-3 o_light_label"/>
-                                <field name="pos_nsoft_api_token" password="True"/>
-                            </div>
+            <xpath expr="//block[@id='pos_interface_section']" position="inside">
+                <setting id="nsoft_fiscalization" string="nSoft Virtuali Fiskalizacija" help="Tiesioginė i.EKA integracija per nSoft API">
+                    <field name="pos_nsoft_enabled"/>
+                    <div class="content-group" invisible="not pos_nsoft_enabled">
+                        <div class="row mt16">
+                            <label for="pos_nsoft_api_url" class="col-lg-3 o_light_label" string="API URL"/>
+                            <field name="pos_nsoft_api_url"/>
                         </div>
-                    </setting>
-                </block>
+                        <div class="row mt16">
+                            <label for="pos_nsoft_pos_id" class="col-lg-3 o_light_label" string="POS ID"/>
+                            <field name="pos_nsoft_pos_id"/>
+                        </div>
+                        <div class="row mt16">
+                            <label for="pos_nsoft_token" class="col-lg-3 o_light_label" string="Token (Slaptažodis)"/>
+                            <field name="pos_nsoft_token"/>
+                        </div>
+                    </div>
+                </setting>
             </xpath>
         </field>
     </record>
