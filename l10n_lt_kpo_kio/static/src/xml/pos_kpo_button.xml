@@ -1,10 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
     <t t-name="l10n_lt_kpo_kio.ReceiptScreen" t-inherit="point_of_sale.ReceiptScreen" t-inherit-mode="extension" owl="1">
-        <xpath expr="//div[hasclass('buttons')]" position="inside">
-            <div class="button print-kpo" t-on-click="downloadKpoPdf" style="margin-top: 10px; background-color: #00A09D; color: white; border-radius: 3px; font-weight: bold; cursor: pointer;">
-                <i class="fa fa-print"></i> Spausdinti KPO (A4)
-            </div>
+        <xpath expr="//div[hasclass('buttons')] | //div[hasclass('receipt-screen')]//div[hasclass('actions')] | //div[1]" position="inside">
+            
+            <t t-if="kpoDownloadUrl === 'loading'">
+                <div style="margin-top: 10px; padding: 15px; background-color: #f0ad4e; color: white; text-align: center; border-radius: 3px; font-weight: bold;">
+                    <i class="fa fa-spinner fa-spin"></i> KPO ruošiamas... (Palaukite kelias sekundes)
+                </div>
+            </t>
+            
+            <t t-elif="kpoDownloadUrl">
+                <a t-att-href="kpoDownloadUrl" target="_blank" style="display:block; margin-top: 10px; padding: 15px; background-color: #00A09D; color: white; text-align: center; text-decoration: none; border-radius: 3px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <i class="fa fa-file-pdf-o"></i> Atidaryti KPO (A4) PDF
+                </a>
+            </t>
+            
         </xpath>
     </t>
 </templates>
