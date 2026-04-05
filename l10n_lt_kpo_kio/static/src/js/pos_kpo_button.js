@@ -12,50 +12,61 @@ patch(ReceiptScreen.prototype, {
         });
     },
 
-    autoPrintKPO() {
+    async autoPrintKPO() {
         try {
-            // Skaitome TIKRĄJĮ ką tik užbaigtą užsakymą iš kvito ekrano savybių!
+            // Paimame užsakymo duomenis
             const order = this.props.order || this.currentOrder;
-            
             if (!order || order.kpo_auto_printed) return;
 
-            const lines = typeof order.get_paymentlines === 'function' ? order.get_paymentlines() : (order.paymentlines || []);
-            const hasKPO = lines.some(line => 
-                line.payment_method && 
-                line.payment_method.name && 
-                line.payment_method.name.toUpperCase().includes('KPO')
-            );
+            // Labai patikimas būdas patikrinti, ar naudotas KPO
+            let hasKPO = false;
+            const receiptData = typeof order.export_for_printing === 'function' ? order.export_for_printing() : null;
+            
+            if (receiptData && receiptData.paymentlines) {
+                hasKPO = receiptData.paymentlines.some(p => (p.name || '').toUpperCase().includes('KPO'));
+            } else if (order.paymentlines) {
+                hasKPO = order.paymentlines.some(p => {
+                    const name = (p.payment_method && p.payment_method.name) || p.name || '';
+                    return name.toUpperCase().includes('KPO');
+                });
+            }
 
-            if (hasKPO) {
-                let attempts = 0;
-                const checkInterval = setInterval(() => {
-                    // Užbaigtas užsakymas gauna backendId, kai pasiekia serverį
-                    const backendId = order.backendId || order.id;
+            if (!hasKPO) return;
+
+            order.kpo_auto_printed = true; // Pažymime, kad procesas prasidėjo
+            const posReference = order.name; // Čekio numeris, kurio ieškosime serveryje
+            
+            // Ciklas, kuris klausia serverio, ar užsakymas jau išsaugotas
+            let attempts = 0;
+            const checkInterval = setInterval(async () => {
+                attempts++;
+                try {
+                    // Kreipiamės TIESIAI į Odoo duomenų bazę ieškodami šio čekio
+                    const result = await this.env.services.orm.search('pos.order', [['pos_reference', '=', posReference]], { limit: 1 });
                     
-                    // Tikriname ar gavome realų ID (skaičių) iš serverio
-                    if (backendId && typeof backendId === 'number') {
+                    // Jei serveris rado užsakymą ir grąžino jo ID
+                    if (result && result.length > 0) {
                         clearInterval(checkInterval);
-                        order.kpo_auto_printed = true;
+                        const backendId = result[0]; // Tikrasis duomenų bazės ID
                         
                         const url = '/report/pdf/l10n_lt_kpo_kio.action_report_kpo_kio_pos/' + backendId;
-                        
-                        // Atidarome PDF
                         const newWindow = window.open(url, '_blank');
                         
-                        // Patikriname ar naršyklė neužblokavo "Iššokančio lango" (Pop-up)
+                        // Jei langas neatsidarė dėl naršyklės blokavimo
                         if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
-                            alert("DĖMESIO: Jūsų naršyklė UŽBLOKAVO automatinį KPO langą! Prašome adreso juostos dešinėje pusėje paspausti ant raudono ženkliuko ir pasirinkti 'Visada leisti iššokančius langus'.");
+                            alert("DĖMESIO! Naršyklė užblokavo KPO PDF langą. Adreso juostos dešinėje pusėje paspauskite ant raudono ženkliuko ir pasirinkite 'Visada leisti iššokančius langus'.");
                         }
+                    } else if (attempts > 10) { 
+                        // Po 10 sekundžių nustojame ieškoti
+                        clearInterval(checkInterval);
                     }
-                    
-                    attempts++;
-                    if (attempts > 50) {
-                        clearInterval(checkInterval); // Nutraukiame paiešką po 10 sekundžių, jei nėra interneto
-                    }
-                }, 200); // Tikriname kas 0.2 sekundės
-            }
+                } catch (rpcError) {
+                    // Ignoruojame laikinas ryšio klaidas ir bandome toliau
+                }
+            }, 1000); // Klausiame serverio kas 1 sekundę
+
         } catch (error) {
-            console.error("KPO spausdinimo klaida:", error);
+            console.error("KPO spausdinimo procesas nutrūko:", error);
         }
     }
 });
