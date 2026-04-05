@@ -6,36 +6,28 @@ import { onMounted } from "@odoo/owl";
 patch(ReceiptScreen.prototype, {
     setup() {
         super.setup(...arguments);
-        
-        // Šis kodas įvykdomas automatiškai, kai atidaromas Čekio/Sąskaitos langas
-        onMounted(() => {
-            try {
-                const pos = this.pos || (this.env && this.env.services && this.env.services.pos);
-                if (!pos) return;
-                
-                const order = pos.get_order();
-                if (!order || !order.backendId) return;
-
-                // Apsauga: jei KPO jau atspausdintas šiam užsakymui, antro neatidarinėjame (pvz., jei F5)
-                if (order.kpo_auto_printed) return;
-
-                // Patikriname, ar apmokėta per KPO
-                const lines = typeof order.get_paymentlines === 'function' ? order.get_paymentlines() : (order.paymentlines || []);
-                const hasKPO = lines.some(line => 
-                    line.payment_method && 
-                    line.payment_method.name && 
-                    line.payment_method.name.toUpperCase().includes('KPO')
-                );
-
-                // Jei naudotas KPO – automatiškai iššoka PDF langas naujame skirtuke
-                if (hasKPO) {
-                    order.kpo_auto_printed = true; // Pažymime, kad jau atidarėme
-                    const url = '/report/pdf/l10n_lt_kpo_kio.action_report_kpo_kio_pos/' + order.backendId;
-                    window.open(url, '_blank');
-                }
-            } catch (error) {
-                console.error("KPO automatinio spausdinimo klaida:", error);
+        onMounted(() => { this.tryDownloadKPO(); });
+    },
+    async tryDownloadKPO() {
+        try {
+            const order = this.currentOrder;
+            if (!order || order.kpo_auto_printed) return;
+            const lines = typeof order.get_paymentlines === 'function' ? order.get_paymentlines() : (order.paymentlines || []);
+            const hasKPO = lines.some(line => line.payment_method && line.payment_method.name && line.payment_method.name.toUpperCase().includes('KPO'));
+            if (hasKPO) {
+                let attempts = 0;
+                const checkInterval = setInterval(() => {
+                    if (order.backendId) {
+                        clearInterval(checkInterval);
+                        order.kpo_auto_printed = true;
+                        const url = '/report/pdf/l10n_lt_kpo_kio.action_report_kpo_kio_pos/' + order.backendId;
+                        const newWindow = window.open(url, '_blank');
+                        if (!newWindow) { alert("DĖMESIO: Naršyklė užblokavo KPO langą. Prašome leisti iššokančius langus (Pop-ups) šiam adresui."); }
+                    }
+                    attempts++;
+                    if (attempts > 60) clearInterval(checkInterval);
+                }, 100);
             }
-        });
+        } catch (e) { console.error("KPO klaida:", e); }
     }
 });
