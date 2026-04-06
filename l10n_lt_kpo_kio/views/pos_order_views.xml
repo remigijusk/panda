@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
                 <field name="has_kpo_payment" invisible="1"/>
-                <button name="%(l10n_lt_kpo_pos_final.action_report_kpo_pos_final)d"
+                <button name="%(l10n_lt_kpo_kio.action_report_kpo_pos_final)d"
                         type="action"
                         string="Spausdinti KPO (A4)"
                         class="oe_highlight"
