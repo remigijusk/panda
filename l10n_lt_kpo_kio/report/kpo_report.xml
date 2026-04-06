@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_kpo_pos_final" model="ir.actions.report">
+        <field name="name">KPO (A4) POS</field>
+        <field name="model">pos.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">l10n_lt_kpo_pos_final.report_kpo_template_final</field>
+        <field name="report_file">l10n_lt_kpo_pos_final.report_kpo_template_final</field>
+        <field name="print_report_name">'KPO_' + object.pos_reference</field>
+        <field name="binding_model_id" ref="point_of_sale.model_pos_order"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="paperformat_kpo_final" model="report.paperformat">
+        <field name="name">KPO Final (A4, No Header)</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">10</field>
+        <field name="margin_right">10</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+    
+    <record id="action_report_kpo_pos_final" model="ir.actions.report">
+        <field name="paperformat_id" ref="paperformat_kpo_final"/>
+    </record>
+</odoo>
