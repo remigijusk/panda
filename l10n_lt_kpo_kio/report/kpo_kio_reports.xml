@@ -45,7 +45,6 @@
                     <div class="page" style="font-family: Arial, sans-serif; font-size: 15px; color: black; padding: 10px;">
                         <div style="min-height: 48%;">
                             <div style="text-align: center; margin-bottom: 20px;">
-                                <div style="font-size: 13px;">ūkio subjekto pavadinimas, kodas, PVM kodas</div>
                                 <strong style="font-size: 15px;" t-field="o.company_id.name"/>
                                 <t t-if="o.company_id.company_registry"><br/>Įmonės kodas: <strong t-field="o.company_id.company_registry"/></t>
                                 <t t-if="o.company_id.vat">, PVM kodas: <strong t-field="o.company_id.vat"/></t>
@@ -134,7 +133,6 @@
                         
                         <div style="min-height: 48%;">
                             <div style="text-align: center; margin-bottom: 20px;">
-                                <div style="font-size: 13px;">ūkio subjekto pavadinimas, kodas, PVM kodas</div>
                                 <strong style="font-size: 15px;" t-field="o.company_id.name"/>
                                 <t t-if="o.company_id.company_registry"><br/>Įmonės kodas: <strong t-field="o.company_id.company_registry"/></t>
                                 <t t-if="o.company_id.vat">, PVM kodas: <strong t-field="o.company_id.vat"/></t>
