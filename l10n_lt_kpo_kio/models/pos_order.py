@@ -1,0 +1,74 @@
+from odoo import models, fields, api
+
+class PosConfig(models.Model):
+    _inherit = 'pos.config'
+    iface_print_kpo = fields.Boolean(string="Spausdinti KPO (A4)")
+
+class PosOrder(models.Model):
+    _inherit = 'pos.order'
+
+    has_kpo_payment = fields.Boolean(compute='_compute_has_kpo_payment', string='Rodyti KPO mygtuką')
+    lt_amount_words = fields.Char(compute='_compute_lt_amounts')
+    lt_amount_eur = fields.Integer(compute='_compute_lt_amounts')
+    lt_amount_ct = fields.Integer(compute='_compute_lt_amounts')
+    kpo_base_text = fields.Char(compute='_compute_kpo_base_text')
+    kpo_journal_account = fields.Char(compute='_compute_kpo_journal_account')
+    cashier_name = fields.Char(compute='_compute_cashier_data')
+    cashier_signature = fields.Binary(compute='_compute_cashier_data')
+
+    @api.depends('payment_ids', 'payment_ids.payment_method_id', 'session_id.config_id.iface_print_kpo')
+    def _compute_has_kpo_payment(self):
+        for order in self:
+            setting_on = order.session_id.config_id.iface_print_kpo if order.session_id and order.session_id.config_id else False
+            has_kpo = False
+            if setting_on:
+                for payment in order.payment_ids:
+                    if payment.payment_method_id and 'KPO' in (payment.payment_method_id.name or '').upper():
+                        has_kpo = True
+                        break
+            order.has_kpo_payment = has_kpo
+
+    @api.depends('payment_ids', 'payment_ids.amount', 'amount_total')
+    def _compute_lt_amounts(self):
+        for order in self:
+            kpo_amount = sum(p.amount for p in order.payment_ids if p.payment_method_id and 'KPO' in (p.payment_method_id.name or '').upper())
+            if kpo_amount <= 0:
+                kpo_amount = order.amount_total
+            abs_amount = abs(kpo_amount)
+            eur = int(abs_amount)
+            ct = int(round((abs_amount - eur) * 100))
+            order.lt_amount_eur = eur
+            order.lt_amount_ct = ct
+            # Naudojame banko eilutės metodą sumoms žodžiais, kad nereiktų dubliuoti kodo
+            order.lt_amount_words = self.env['account.bank.statement.line']._get_lt_words(eur)
+
+    def _compute_kpo_base_text(self):
+        for order in self:
+            base_text = f"{order.pos_reference} POS Užsakymas"
+            if order.partner_id:
+                base_text += f", Klientas: {order.partner_id.name}"
+            order.kpo_base_text = base_text
+
+    def _compute_kpo_journal_account(self):
+        for order in self:
+            account_code = ''
+            try:
+                for payment in order.payment_ids:
+                    if payment.payment_method_id and 'KPO' in (payment.payment_method_id.name or '').upper():
+                        journal = payment.payment_method_id.journal_id
+                        if journal and journal.default_account_id:
+                            account_code = journal.default_account_id.code
+                        break
+            except Exception:
+                pass
+            order.kpo_journal_account = account_code or '______'
+
+    def _compute_cashier_data(self):
+        for order in self:
+            cashier = order.employee_id.name if order.employee_id else (order.user_id.name if order.user_id else self.env.user.name)
+            order.cashier_name = cashier or '______'
+            user = order.user_id or self.env.user
+            if hasattr(user, 'sign_signature') and user.sign_signature:
+                order.cashier_signature = user.sign_signature
+            else:
+                order.cashier_signature = False
