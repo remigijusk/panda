@@ -1,14 +1,23 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <record id="res_config_settings_view_form_inherit_kpo" model="ir.ui.view">
-        <field name="name">res.config.settings.view.form.inherit.kpo</field>
+    <record id="res_config_settings_view_form_kpo_final" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.point_of_sale.final</field>
         <field name="model">res.config.settings</field>
+        <field name="priority" eval="95"/>
         <field name="inherit_id" ref="point_of_sale.res_config_settings_view_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//*[@id='pos_accounting_section']" position="inside">
-                <setting id="kpo_print_setting" help="Leidžia atspausdinti A4 formato KPO orderį tiesiai iš kasos kvito ekrano.">
-                    <field name="pos_iface_print_kpo"/>
-                </setting>
+            <xpath expr="//div[@id='pos_interface_section']" position="inside">
+                 <div class="col-12 col-lg-6 o_setting_box" id="print_kpo_final">
+                    <div class="o_setting_left_pane">
+                        <field name="pos_iface_print_kpo"/>
+                    </div>
+                    <div class="o_setting_right_pane">
+                        <label for="pos_iface_print_kpo"/>
+                        <div class="text-muted">
+                            Leidžia spausdinti Kasos Pajamų Orderį iš Pardavimo taško.
+                        </div>
+                    </div>
+                </div>
             </xpath>
         </field>
     </record>
