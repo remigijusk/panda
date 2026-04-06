@@ -34,7 +34,7 @@
                                     <th style="border: 1px solid black; padding: 7px; width: 25%;">Analitinės apskaitos šifras</th>
                                     <th style="border: 1px solid black; padding: 7px; width: 25%;">Suma (Eur)</th>
                                     <th style="border: 1px solid black; padding: 7px; width: 25%;">Suma (ct)</th>
-                                }
+                                </tr>
                                 <tr>
                                     <td style="border: 1px solid black; padding: 12px; font-size: 16px;">
                                         <span t-field="o.kpo_journal_account"/>
