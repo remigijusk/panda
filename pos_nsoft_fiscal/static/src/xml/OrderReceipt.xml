@@ -2,10 +2,10 @@
 <templates id="template" xml:space="preserve">
     <t t-name="pos_nsoft_fiscal.OrderReceipt" t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension" owl="1">
         <xpath expr="//div[hasclass('pos-receipt-contact')]" position="after">
-            <t t-if="props.data and props.data.pos_order and props.data.pos_order.nsoft_receipt_id">
+            <t t-if="props.data and props.data.nsoft_receipt_id">
                 <div class="pos-receipt-center-align" style="margin-top: 10px; border-top: 1px dashed black; padding-top: 5px;">
                     <div><strong>Fiskalinis čekis (i.EKA)</strong></div>
-                    <div>nSoft ID: <t t-esc="props.data.pos_order.nsoft_receipt_id"/></div>
+                    <div>nSoft ID: <t t-esc="props.data.nsoft_receipt_id"/></div>
                 </div>
             </t>
         </xpath>
