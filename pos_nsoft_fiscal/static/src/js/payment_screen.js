@@ -4,8 +4,8 @@ import { Order } from "@point_of_sale/app/store/models";
 import { patch } from "@web/core/utils/patch";
 import { useService } from "@web/core/utils/hooks";
 
-// Pridėtas antras argumentas (pavadinimas), be kurio Odoo 19 lūžta
-patch(Order.prototype, "pos_nsoft_fiscal.Order", {
+// SAUGUS PATCH (TIK 2 ARGUMENTAI)
+patch(Order.prototype, {
     export_for_printing() {
         const receipt = super.export_for_printing(...arguments);
         receipt.nsoft_receipt_id = this.nsoft_receipt_id;
@@ -13,8 +13,8 @@ patch(Order.prototype, "pos_nsoft_fiscal.Order", {
     }
 });
 
-// Pridėtas pavadinimas ir čia
-patch(PaymentScreen.prototype, "pos_nsoft_fiscal.PaymentScreen", {
+// SAUGUS PATCH (TIK 2 ARGUMENTAI)
+patch(PaymentScreen.prototype, {
     setup() {
         super.setup(...arguments);
         this.orm = useService("orm");
@@ -42,16 +42,11 @@ patch(PaymentScreen.prototype, "pos_nsoft_fiscal.PaymentScreen", {
                 [[0], orderData]
             );
 
-            // Jeigu Python kodas pasakė IGNORED (varnelė nuimta)
             if (result.ignored) {
-                order.nsoft_receipt_id = false; // Nepaliekame jokio pėdsako!
-            } 
-            // Jeigu suveikė sėkmingai
-            else if (result.success) {
+                order.nsoft_receipt_id = false; 
+            } else if (result.success) {
                 order.nsoft_receipt_id = result.receipt_id || "Registruota";
-            } 
-            // Jei atmetė nSoft serveris
-            else {
+            } else {
                 this.notification.add(result.error || "Fiskalizacijos klaida", { type: "danger" });
                 return false;
             }
@@ -61,7 +56,6 @@ patch(PaymentScreen.prototype, "pos_nsoft_fiscal.PaymentScreen", {
             return false;
         }
 
-        // Tęsiame Odoo pardavimą
         return super.validateOrder(...arguments);
     }
 });
