@@ -19,9 +19,10 @@ class ResConfigSettings(models.TransientModel):
         if not self.pos_nsoft_api_url or not self.pos_nsoft_pos_id or not self.pos_nsoft_token:
             raise UserError("Užpildykite visus laukus (API URL, POS ID, Token) prieš testuojant ryšį!")
 
-        url = f"{self.pos_nsoft_api_url.rstrip('/')}/cr/{self.pos_nsoft_pos_id}/cash"
+        # Testuojame prašydami X ataskaitos, nes 0.00 EUR operaciją kasa atmeta kaip negaliojančią
+        url = f"{self.pos_nsoft_api_url.rstrip('/')}/cr/{self.pos_nsoft_pos_id}/cur-day"
         headers = {"Authorization": f"Bearer {self.pos_nsoft_token}"}
-        payload = {"output": {"format": "native", "lineWidth": 80}, "direction": "in", "amount": 0.0}
+        payload = {"output": {"format": "native", "lineWidth": 80}}
         
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=10)
@@ -29,9 +30,10 @@ class ResConfigSettings(models.TransientModel):
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
-                    'params': {'title': 'Ryšys veikia!', 'message': 'Prisijungimas sėkmingas.', 'type': 'success'}
+                    'params': {'title': 'Ryšys veikia!', 'message': 'Prisijungimas sėkmingas (X ataskaita priimta).', 'type': 'success'}
                 }
             else:
-                raise UserError(f"Ryšio klaida! Serveris atmetė užklausą. Kodas: {response.status_code}")
+                error_text = response.text if response.text else "Nėra serverio atsakymo teksto"
+                raise UserError(f"Ryšio klaida! Serveris atmetė užklausą.\nKodas: {response.status_code}\nPriežastis: {error_text}")
         except Exception as e:
             raise UserError(f"Nepavyko pasiekti nSoft serverio. Klaida: {e}")
