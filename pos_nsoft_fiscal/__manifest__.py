@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.59.0',
+    'version': '19.0.1.60.0',
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'description': """
-        v1.59.0: Ištaisyta JS krovimo klaida (OWL lifecycle error), pridėjus privalomus patch pavadinimus į payment_screen.js. Dabar nepajungtos kasos sėkmingai ir be klaidų užbaigia pardavimus ir nespausdina nSoft informacijos ant kvitų.
+        v1.60.0: Ištaisyta JS patch() sintaksės klaida Odoo 19 aplinkoje (palikti 2 argumentai). Pridėtas saugus kintamųjų tikrinimas XML faile, užkertant kelią balto ekrano OWL klaidoms.
     """,
     'author': 'Remigijus Kubilius',
     'depends': ['point_of_sale'],
