@@ -4,8 +4,8 @@ import { Order } from "@point_of_sale/app/store/models";
 import { patch } from "@web/core/utils/patch";
 import { useService } from "@web/core/utils/hooks";
 
-// Pridedame mūsų kintamąjį į kvito spausdinimo duomenis
-patch(Order.prototype, {
+// Pridėtas antras argumentas (pavadinimas), be kurio Odoo 19 lūžta
+patch(Order.prototype, "pos_nsoft_fiscal.Order", {
     export_for_printing() {
         const receipt = super.export_for_printing(...arguments);
         receipt.nsoft_receipt_id = this.nsoft_receipt_id;
@@ -13,7 +13,8 @@ patch(Order.prototype, {
     }
 });
 
-patch(PaymentScreen.prototype, {
+// Pridėtas pavadinimas ir čia
+patch(PaymentScreen.prototype, "pos_nsoft_fiscal.PaymentScreen", {
     setup() {
         super.setup(...arguments);
         this.orm = useService("orm");
