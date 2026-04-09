@@ -13,18 +13,33 @@ patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
         const order = this.currentOrder;
         
-        // SAUGUS SESIJOS GAVIMAS: Pritaikyta naujausiai Odoo 19 architektūrai
+        // Saugus ištraukimo įrankis (apsaugo nuo Odoo versijų skirtumų)
+        const getVal = (obj, prop) => typeof obj[prop] === 'function' ? obj[prop]() : obj[prop];
+        
+        // Apsaugotas sesijos ID
         const sessionId = this.pos.session ? this.pos.session.id : (this.pos.pos_session ? this.pos.pos_session.id : null);
         
+        // Apsaugotas sumų ir eilučių ištraukimas
+        const trueTotal = getVal(order, 'get_total_with_tax') || order.amount_total || 0;
+        const orderLines = getVal(order, 'get_orderlines') || order.lines || [];
+        
+        const linesData = orderLines.map(line => {
+            const qty = getVal(line, 'get_quantity') || line.qty || 1;
+            const price = getVal(line, 'get_unit_price') || line.price_unit || 0;
+            const total = getVal(line, 'get_price_with_tax') || line.price_subtotal_incl || 0;
+            
+            let name = "Prekė";
+            const product = getVal(line, 'get_product') || line.product;
+            if (product) {
+                name = product.display_name || product.name || "Prekė";
+            }
+            return { qty, price, total, name };
+        });
+
         const orderData = {
             pos_session_id: sessionId,
-            true_total: order.get_total_with_tax(),
-            lines: order.get_orderlines().map(line => ({
-                qty: line.get_quantity(),
-                price: line.get_unit_price(),
-                total: line.get_price_with_tax(),
-                name: line.get_product().display_name
-            }))
+            true_total: trueTotal,
+            lines: linesData
         };
 
         try {
@@ -44,11 +59,11 @@ patch(PaymentScreen.prototype, {
             }
         } catch (error) {
             this.notification.add("Ryšio klaida su serveriu", { type: "danger" });
-            console.error(error);
+            console.error("nSoft klaida:", error);
             return false;
         }
 
-        // 100% SAUGUS BŪDAS ĮTERPTI DUOMENIS Į ČEKĮ
+        // Saugus čekio papildymas
         if (!order._nsoft_patched && typeof order.export_for_printing === 'function') {
             const originalExport = order.export_for_printing.bind(order);
             order.export_for_printing = (...args) => {
@@ -59,7 +74,6 @@ patch(PaymentScreen.prototype, {
             order._nsoft_patched = true;
         }
 
-        // Tęsiame Odoo pardavimą
         return super.validateOrder(...arguments);
     }
 });
