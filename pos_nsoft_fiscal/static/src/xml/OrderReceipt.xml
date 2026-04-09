@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
-    <t t-name="pos_nsoft_fiscal.OrderReceipt" t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension" owl="1">
+    <t t-name="pos_nsoft_fiscal.OrderReceipt" t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension">
         <xpath expr="//div[hasclass('pos-receipt-contact')]" position="after">
             <t t-if="props.data and props.data.nsoft_receipt_id">
                 <div class="pos-receipt-center-align" style="margin-top: 10px; border-top: 1px dashed black; padding-top: 5px;">
