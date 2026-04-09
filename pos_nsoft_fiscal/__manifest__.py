@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.55.0',
+    'version': '19.0.1.58.0',
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'description': """
-        v1.55.0: Ištaisyta kritinė klaida - sugrąžintas pos_order.py failo importavimas, atstatant pardavimų ir kvitų generavimo logiką.
+        v1.58.0: Ištaisyta "meluojančio" kvito klaida - nSoft tekstas ir ID ant kvito dabar spausdinami tik tuo atveju, jeigu kasoje iš tikrųjų įjungta nSoft fiskalizacija ir operacija nebuvo ignoruota.
     """,
     'author': 'Remigijus Kubilius',
     'depends': ['point_of_sale'],
