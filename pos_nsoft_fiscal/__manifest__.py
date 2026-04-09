@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.66.0',
+    'version': '19.0.1.67.0',
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'description': """
-        v1.66.0: Pilnai ištaisyta OWL Lifecycle balto ekrano klaida. Pašalintos nesaugios XML užklausos (props.data.pos_order). Dabar nepajungtos kasos veikia 100% standartiškai, neieško nSoft duomenų ir nelūžta.
+        v1.67.0: Pakeista "Testuoti ryšį" mygtuko logika. Užuot siuntus 0.00 EUR pinigų įnešimą (kurį nSoft atmeta su 400 Bad Request klaida), dabar ryšys testuojamas iškviečiant X ataskaitą (/cur-day).
     """,
     'author': 'Remigijus Kubilius',
     'depends': ['point_of_sale'],
@@ -14,10 +14,5 @@
         'views/pos_session_views.xml',
     ],
     'installable': True,
-    'assets': {
-        'point_of_sale._assets_pos': [
-            'pos_nsoft_fiscal/static/src/xml/OrderReceipt.xml',
-        ],
-    },
     'license': 'LGPL-3',
 }
