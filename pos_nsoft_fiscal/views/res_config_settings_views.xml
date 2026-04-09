@@ -21,6 +21,9 @@
                             <label for="pos_nsoft_token" class="col-lg-3 o_light_label" string="Token (Slaptažodis)"/>
                             <field name="pos_nsoft_token"/>
                         </div>
+                        <div class="row mt16">
+                            <button name="action_test_nsoft_connection" type="object" string="Testuoti Ryšį" class="btn btn-primary" icon="fa-wifi"/>
+                        </div>
                     </div>
                 </setting>
             </xpath>
