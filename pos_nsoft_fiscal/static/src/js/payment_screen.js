@@ -13,8 +13,11 @@ patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
         const order = this.currentOrder;
         
+        // SAUGUS SESIJOS GAVIMAS: Pritaikyta naujausiai Odoo 19 architektūrai
+        const sessionId = this.pos.session ? this.pos.session.id : (this.pos.pos_session ? this.pos.pos_session.id : null);
+        
         const orderData = {
-            pos_session_id: this.pos.pos_session.id,
+            pos_session_id: sessionId,
             true_total: order.get_total_with_tax(),
             lines: order.get_orderlines().map(line => ({
                 qty: line.get_quantity(),
@@ -31,7 +34,6 @@ patch(PaymentScreen.prototype, {
                 [[0], orderData]
             );
 
-            // Priskiriame ID prie užsakymo, atsižvelgiant į tai, ar nSoft įjungtas
             if (result.ignored) {
                 order.nsoft_receipt_id = false; 
             } else if (result.success) {
@@ -46,12 +48,11 @@ patch(PaymentScreen.prototype, {
             return false;
         }
 
-        // 100% SAUGUS BŪDAS ĮTERPTI DUOMENIS Į ČEKĮ (Be jokių pavojingų importų)
+        // 100% SAUGUS BŪDAS ĮTERPTI DUOMENIS Į ČEKĮ
         if (!order._nsoft_patched && typeof order.export_for_printing === 'function') {
             const originalExport = order.export_for_printing.bind(order);
             order.export_for_printing = (...args) => {
                 const receipt = originalExport(...args);
-                // Įklijuojame nSoft ID į spausdinimo duomenis
                 receipt.nsoft_receipt_id = order.nsoft_receipt_id;
                 return receipt;
             };
