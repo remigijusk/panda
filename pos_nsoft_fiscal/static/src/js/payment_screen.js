@@ -43,10 +43,11 @@ patch(PaymentScreen.prototype, {
         };
 
         try {
+            // TAI YRA TIKROJI PATAISYTA VIETA (siunčiame teisingu formatu)
             const result = await this.orm.call(
                 "pos.order",
                 "action_send_receipt_to_nsoft",
-                [[0], orderData]
+                [orderData] 
             );
 
             if (result.ignored) {
