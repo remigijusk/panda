@@ -1,44 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
-    <t t-name="pos_nsoft_fiscal.OrderReceipt" t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension">
-        <xpath expr="//div[hasclass('pos-receipt')]" position="inside">
-            
-            <style>
-                /* Saugus "Keisti" pakeitimas į "Grąža" */
-                .receipt-change {
-                    font-size: 0px !important;
-                }
-                .receipt-change::before {
-                    content: "Grąža";
-                    font-size: 14px !important;
-                }
-                .receipt-change .pos-receipt-right-align {
-                    font-size: 14px !important;
-                }
-
-                /* Saugus "Served by" pakeitimas į "Aptarnavo" */
-                .pos-receipt-contact + div, 
-                div:contains('Served by') {
-                    font-size: 0px !important;
-                }
-                div:contains('Served by')::before {
-                    content: "Aptarnavo: ";
-                    font-size: 14px !important;
-                }
-                div:contains('Served by') t {
-                    font-size: 14px !important;
-                }
-            </style>
-
-            <div class="pos-receipt-nsoft" style="margin-top: 15px; text-align: center; border-top: 1px dashed black; padding-top: 10px; font-size: 14px; clear: both;">
-                <strong>Fiskalinis čekis (i.EKA)</strong><br/>
-                <t t-if="props and props.data and props.data.nsoft_id">
-                    nSoft ID: <t t-esc="props.data.nsoft_id" />
-                </t>
-                <t t-else="">
-                    nSoft ID: <t t-esc="receipt and receipt.nsoft_id ? receipt.nsoft_id : 'Registruota'" />
-                </t>
-            </div>
+    <t t-name="pos_nsoft_fiscal.OrderReceipt" t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension" owl="1">
+        
+        <xpath expr="//div[hasclass('pos-receipt-contact')]" position="after">
+            <t t-if="props.data.nsoft_receipt_id">
+                <div class="pos-receipt-center-align" style="margin-top: 10px; border-top: 1px dashed black; padding-top: 5px;">
+                    <div><strong>Fiskalinis čekis (i.EKA)</strong></div>
+                    <div>nSoft ID: <t t-esc="props.data.nsoft_receipt_id"/></div>
+                </div>
+            </t>
         </xpath>
+
     </t>
 </templates>
