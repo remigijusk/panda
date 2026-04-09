@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.61.0',
+    'version': '19.0.1.62.0',
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'description': """
-        v1.61.0: Galutinai išspręsta "Error loading javascript modules" problema. Pašalintas pavojingas Order modelio importavimas (kurio kelias Odoo 19 versijoje pasikeitė). Įdiegtas saugus "monkey-patching" metodas čekio duomenims papildyti tiesiogiai iš PaymentScreen.
+        v1.62.0: Ištaisyta "Cannot read properties of undefined (reading 'id')" klaida. Pritaikytas saugus kasos sesijos ID ištraukimas (this.pos.session.id), suderinant kodą su Odoo 19 architektūriniais pakeitimais.
     """,
     'author': 'Remigijus Kubilius',
     'depends': ['point_of_sale'],
