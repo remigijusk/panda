@@ -39,10 +39,7 @@ class PosSession(models.Model):
         return res
 
     def _get_nsoft_credentials(self, session):
-        api_url = session.config_id.nsoft_api_url
-        pos_id = session.config_id.nsoft_pos_id
-        token = session.config_id.nsoft_token
-        return api_url, pos_id, token
+        return session.config_id.nsoft_api_url, session.config_id.nsoft_pos_id, session.config_id.nsoft_token
 
     def print_nsoft_x_report(self):
         for session in self:
@@ -50,10 +47,9 @@ class PosSession(models.Model):
                 return False
                 
             api_url, pos_id, token = self._get_nsoft_credentials(session)
-            if not api_url or not token:
-                continue
+            if not api_url or not token: continue
                 
-            url = f"{api_url.rstrip('/')}/cr/{pos_id}/x-report"
+            url = f"{api_url.rstrip('/')}/cr/{pos_id}/cur-day"
             headers = {"Authorization": f"Bearer {token}"}
             payload = {"output": {"format": "native", "lineWidth": 80}}
             try:
@@ -62,15 +58,7 @@ class PosSession(models.Model):
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
-                    'params': {'title': 'Pavyko!', 'message': 'X Ataskaita sėkmingai išsiųsta.', 'type': 'success'}
-                }
-            except requests.exceptions.HTTPError as e:
-                error_body = e.response.text if e.response else "Nėra atsakymo kūno"
-                _logger.error(f"nSoft X-Ataskaitos HTTP klaida: {e} | Žinutė: {error_body}")
-                return {
-                    'type': 'ir.actions.client',
-                    'tag': 'display_notification',
-                    'params': {'title': 'Klaida', 'message': 'Serverio atmetimas. Žiūrėti logus.', 'type': 'danger', 'sticky': True}
+                    'params': {'title': 'Pavyko!', 'message': 'X Ataskaita išsiųsta.', 'type': 'success'}
                 }
             except Exception as e:
                 _logger.error(f"nSoft X-Ataskaitos klaida: {e}")
@@ -81,18 +69,13 @@ class PosSession(models.Model):
                 continue
                 
             api_url, pos_id, token = self._get_nsoft_credentials(session)
-            if not api_url or not token:
-                continue
+            if not api_url or not token: continue
                 
-            url = f"{api_url.rstrip('/')}/cr/{pos_id}/z-report"
+            url = f"{api_url.rstrip('/')}/cr/{pos_id}/fis-day"
             headers = {"Authorization": f"Bearer {token}"}
             payload = {"output": {"format": "native", "lineWidth": 80}}
             try:
-                response = requests.post(url, json=payload, headers=headers, timeout=10)
-                response.raise_for_status()
-            except requests.exceptions.HTTPError as e:
-                error_body = e.response.text if e.response else "Nėra atsakymo kūno"
-                _logger.error(f"nSoft Z-Ataskaitos HTTP klaida: {e} | Žinutė: {error_body}")
+                requests.post(url, json=payload, headers=headers, timeout=10)
             except Exception as e:
                 _logger.error(f"nSoft Z-Ataskaitos klaida: {e}")
 
@@ -102,16 +85,11 @@ class PosSession(models.Model):
                 continue
                 
             api_url, pos_id, token = self._get_nsoft_credentials(session)
-            if not api_url or not token:
-                continue
+            if not api_url or not token: continue
                 
             url = f"{api_url.rstrip('/')}/cr/{pos_id}/cash"
             headers = {"Authorization": f"Bearer {token}"}
-            payload = {
-                "output": {"format": "native", "lineWidth": 80},
-                "direction": direction,
-                "amount": float(amount)
-            }
+            payload = {"output": {"format": "native", "lineWidth": 80}, "direction": direction, "amount": float(amount)}
             try:
                 requests.post(url, json=payload, headers=headers, timeout=10)
             except Exception as e:
