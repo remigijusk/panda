@@ -1,19 +1,8 @@
 /** @odoo-module */
 import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
-import { Order } from "@point_of_sale/app/store/models";
 import { patch } from "@web/core/utils/patch";
 import { useService } from "@web/core/utils/hooks";
 
-// SAUGUS PATCH (TIK 2 ARGUMENTAI)
-patch(Order.prototype, {
-    export_for_printing() {
-        const receipt = super.export_for_printing(...arguments);
-        receipt.nsoft_receipt_id = this.nsoft_receipt_id;
-        return receipt;
-    }
-});
-
-// SAUGUS PATCH (TIK 2 ARGUMENTAI)
 patch(PaymentScreen.prototype, {
     setup() {
         super.setup(...arguments);
@@ -42,6 +31,7 @@ patch(PaymentScreen.prototype, {
                 [[0], orderData]
             );
 
+            // Priskiriame ID prie užsakymo, atsižvelgiant į tai, ar nSoft įjungtas
             if (result.ignored) {
                 order.nsoft_receipt_id = false; 
             } else if (result.success) {
@@ -56,6 +46,19 @@ patch(PaymentScreen.prototype, {
             return false;
         }
 
+        // 100% SAUGUS BŪDAS ĮTERPTI DUOMENIS Į ČEKĮ (Be jokių pavojingų importų)
+        if (!order._nsoft_patched && typeof order.export_for_printing === 'function') {
+            const originalExport = order.export_for_printing.bind(order);
+            order.export_for_printing = (...args) => {
+                const receipt = originalExport(...args);
+                // Įklijuojame nSoft ID į spausdinimo duomenis
+                receipt.nsoft_receipt_id = order.nsoft_receipt_id;
+                return receipt;
+            };
+            order._nsoft_patched = true;
+        }
+
+        // Tęsiame Odoo pardavimą
         return super.validateOrder(...arguments);
     }
 });
