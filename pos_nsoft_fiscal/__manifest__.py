@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.63.0',
+    'version': '19.0.1.64.0',
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'description': """
-        v1.63.0: Pilna ir galutinė modulio revizija. Atstatytas 100% stabilumas. JS faile įdiegtas universalus 'getVal' metodas, kuris apsaugo naršyklę nuo lūžimo ('is not a function'), atpažindamas ar Odoo naudoja funkcijas, ar savybes (getters). Modulis stabiliai veikia tiek su įjungta, tiek su išjungta nSoft varnelėmis.
+        v1.64.0: Ištaisyta "Ryšio klaida su serveriu" problema. Atnaujintas orm.call argumentų perdavimo formatas iš [[0], orderData] į [orderData], užtikrinant suderinamumą su Odoo naujausių versijų @api.model backend metodais.
     """,
     'author': 'Remigijus Kubilius',
     'depends': ['point_of_sale'],
