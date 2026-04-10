@@ -4,23 +4,26 @@ import { patch } from "@web/core/utils/patch";
 
 patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
+        if (!this.pos.config.nsoft_enabled) {
+            return super.validateOrder(...arguments);
+        }
+
         const order = this.currentOrder;
         
-        const getVal = (obj, prop) => typeof obj[prop] === 'function' ? obj[prop]() : obj[prop];
-        const trueTotal = getVal(order, 'get_total_with_tax') || order.amount_total || 0;
-        const orderLines = getVal(order, 'get_orderlines') || order.lines || [];
+        // Jokių gudravimų - tiesioginis Odoo komandų kvietimas
+        const trueTotal = order.get_total_with_tax();
+        const orderLines = order.get_orderlines();
         
         const linesData = orderLines.map(line => {
-            const qty = getVal(line, 'get_quantity') || line.qty || 1;
-            const price = getVal(line, 'get_unit_price') || line.price_unit || 0;
-            const total = getVal(line, 'get_price_with_tax') || line.price_subtotal_incl || 0;
-            let name = "Prekė";
-            const product = getVal(line, 'get_product') || line.product;
-            if (product) name = product.display_name || product.name || "Prekė";
-            return { qty, price, total, name };
+            const product = line.get_product();
+            return {
+                qty: line.get_quantity(),
+                price: line.get_unit_price(),
+                total: line.get_price_with_tax(),
+                name: product ? (product.display_name || product.name) : "Prekė"
+            };
         });
 
-        // PERDUODAME TIK KASOS ID. Python pats susiras slaptažodį DB!
         const orderData = {
             config_id: this.pos.config.id,
             true_total: trueTotal,
@@ -31,21 +34,24 @@ patch(PaymentScreen.prototype, {
             const orm = this.env.services.orm;
             const result = await orm.call("pos.order", "action_send_receipt_to_nsoft", [orderData]);
             
-            if (result && result.success && result.receipt_id) {
+            if (result && result.success) {
                 order.nsoft_receipt_id = result.receipt_id;
+                order.nsoft_error = false;
             } else {
-                console.log("nSoft ignoravo arba atmetė:", result);
+                order.nsoft_receipt_id = false;
+                order.nsoft_error = result ? result.error : "Nėra atsakymo iš Python serverio";
             }
         } catch (error) {
-            console.error("Klaida bendraujant su Python:", error);
+            order.nsoft_receipt_id = false;
+            order.nsoft_error = "Sistemos klaida: " + error.message;
         }
 
-        // Įskiepijame gautą ID į kvitą
         if (typeof order.export_for_printing === 'function' && !order._nsoft_patched) {
             const originalExport = order.export_for_printing.bind(order);
             order.export_for_printing = () => {
                 const receipt = originalExport();
-                receipt.nsoft_receipt_id = order.nsoft_receipt_id || false;
+                receipt.nsoft_receipt_id = order.nsoft_receipt_id;
+                receipt.nsoft_error = order.nsoft_error;
                 return receipt;
             };
             order._nsoft_patched = true;
