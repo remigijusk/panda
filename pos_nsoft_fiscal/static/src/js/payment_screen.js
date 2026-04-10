@@ -10,19 +10,43 @@ patch(PaymentScreen.prototype, {
 
         const order = this.currentOrder;
         
-        // Jokių gudravimų - tiesioginis Odoo komandų kvietimas
-        const trueTotal = order.get_total_with_tax();
-        const orderLines = order.get_orderlines();
-        
-        const linesData = orderLines.map(line => {
-            const product = line.get_product();
-            return {
-                qty: line.get_quantity(),
-                price: line.get_unit_price(),
-                total: line.get_price_with_tax(),
-                name: product ? (product.display_name || product.name) : "Prekė"
-            };
-        });
+        // 1. SAUGIAUSIAS BŪDAS: Traukiame duomenis tiesiai iš Odoo kvitų generatoriaus!
+        let receiptData = {};
+        try {
+            if (typeof order.export_for_printing === 'function') {
+                receiptData = order.export_for_printing();
+            }
+        } catch (e) {
+            console.error("Nepavyko ištraukti čekio duomenų:", e);
+        }
+
+        // 2. Renkame sumas iš čekio (kur jos garantuotai egzistuoja ir yra teisingos)
+        let trueTotal = receiptData.total_with_tax || order.amount_total || 0;
+        let linesData = [];
+
+        if (receiptData.orderlines && receiptData.orderlines.length > 0) {
+            linesData = receiptData.orderlines.map(l => ({
+                qty: l.quantity !== undefined ? l.quantity : 1,
+                price: l.price !== undefined ? l.price : 0,
+                total: l.price_display !== undefined ? l.price_display : (l.price_with_tax || 0),
+                name: l.product_name || "Prekė"
+            }));
+        } else {
+            // Atsarginis variantas, jei Odoo 19 atiduoda struktūrą kitaip
+            const orderLines = order.lines || [];
+            for (const line of orderLines) {
+                let qty = line.qty !== undefined ? line.qty : (line.quantity || 1);
+                let price = line.price_unit !== undefined ? line.price_unit : (line.price || 0);
+                let total = line.price_subtotal_incl !== undefined ? line.price_subtotal_incl : (qty * price);
+                let name = line.full_product_name || (line.product ? line.product.display_name : "Prekė");
+                linesData.push({ qty, price, total, name });
+            }
+        }
+
+        // Galutinis saugiklis nuo 0.00
+        if (!trueTotal || trueTotal === 0) {
+            trueTotal = linesData.reduce((sum, line) => sum + line.total, 0);
+        }
 
         const orderData = {
             config_id: this.pos.config.id,
@@ -30,6 +54,7 @@ patch(PaymentScreen.prototype, {
             lines: linesData
         };
 
+        // 3. Siunčiame paruoštus, garantuotai ne nulinius duomenis į Python
         try {
             const orm = this.env.services.orm;
             const result = await orm.call("pos.order", "action_send_receipt_to_nsoft", [orderData]);
@@ -39,13 +64,14 @@ patch(PaymentScreen.prototype, {
                 order.nsoft_error = false;
             } else {
                 order.nsoft_receipt_id = false;
-                order.nsoft_error = result ? result.error : "Nėra atsakymo iš Python serverio";
+                order.nsoft_error = result ? result.error : "Nėra atsakymo iš nSoft";
             }
         } catch (error) {
             order.nsoft_receipt_id = false;
             order.nsoft_error = "Sistemos klaida: " + error.message;
         }
 
+        // 4. Perduodame ID (arba klaidą) į patį kvitą
         if (typeof order.export_for_printing === 'function' && !order._nsoft_patched) {
             const originalExport = order.export_for_printing.bind(order);
             order.export_for_printing = () => {
