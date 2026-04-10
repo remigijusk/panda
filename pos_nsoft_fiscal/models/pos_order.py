@@ -12,22 +12,13 @@ class PosOrder(models.Model):
 
     @api.model
     def action_send_receipt_to_nsoft(self, order_data):
-        session_id = order_data.get('pos_session_id')
-        if not session_id:
-            return {'success': True, 'ignored': True}
-            
-        session = self.env['pos.session'].browse(session_id)
-        config = session.config_id
-        
-        if not config.nsoft_enabled:
-            return {'success': True, 'ignored': True}
+        # Nustatymus imame tiesiai iš JS atsiųstų duomenų!
+        api_url = order_data.get('api_url')
+        pos_id = order_data.get('pos_id')
+        token = order_data.get('token')
 
-        api_url = config.nsoft_api_url
-        pos_id = config.nsoft_pos_id
-        token = config.nsoft_token
-
-        if not token or not api_url:
-            return {'success': False, 'error': 'API Token/URL nerastas.'}
+        if not token or not api_url or not pos_id:
+            return {'success': False, 'error': 'Trūksta nSoft API nustatymų.'}
 
         true_total = order_data.get('true_total', 0.0)
         is_refund = true_total < 0
