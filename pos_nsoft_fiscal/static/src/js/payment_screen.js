@@ -4,15 +4,16 @@ import { patch } from "@web/core/utils/patch";
 
 patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
-        // 1. Saugiklis: jeigu nSoft išjungtas, tęsiame darbą standartiškai
         if (!this.pos.config.nsoft_enabled) {
             return super.validateOrder(...arguments);
         }
 
         const order = this.currentOrder;
-        const sessionId = this.pos.session ? this.pos.session.id : (this.pos.pos_session ? this.pos.pos_session.id : null);
         
-        // 2. Ištraukiame užsakymo duomenis
+        // Išvalome seną ID, kad neatsispausdintų ant kito čekio
+        this.pos.last_nsoft_receipt_id = null;
+        
+        const sessionId = this.pos.session ? this.pos.session.id : (this.pos.pos_session ? this.pos.pos_session.id : null);
         const getVal = (obj, prop) => typeof obj[prop] === 'function' ? obj[prop]() : obj[prop];
         const trueTotal = getVal(order, 'get_total_with_tax') || order.amount_total || 0;
         const orderLines = getVal(order, 'get_orderlines') || order.lines || [];
@@ -33,32 +34,17 @@ patch(PaymentScreen.prototype, {
             lines: linesData
         };
 
-        // 3. Fone, prieš atspausdinant čekį, paprašome nSoft sugeneruoti ID
         try {
             const orm = this.env.services.orm;
             const result = await orm.call("pos.order", "action_send_receipt_to_nsoft", [orderData]);
             if (result && result.success) {
-                order.nsoft_receipt_id = result.receipt_id;
-            } else {
-                order.nsoft_receipt_id = "Klaida: Nepavyko gauti ID";
+                // Saugome globalioje kasos atmintyje!
+                this.pos.last_nsoft_receipt_id = result.receipt_id;
             }
         } catch (error) {
             console.error("nSoft klaida:", error);
-            order.nsoft_receipt_id = "Ryšio klaida";
         }
 
-        // 4. Atiduodame gautą ID atspausdinimui į kvitą
-        if (typeof order.export_for_printing === 'function' && !order.nsoft_patched) {
-            const originalExport = order.export_for_printing.bind(order);
-            order.export_for_printing = () => {
-                const receipt = originalExport();
-                receipt.nsoft_receipt_id = order.nsoft_receipt_id;
-                return receipt;
-            };
-            order.nsoft_patched = true;
-        }
-
-        // Tęsiame Odoo darbą
         return super.validateOrder(...arguments);
     }
 });
