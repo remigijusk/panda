@@ -4,12 +4,7 @@ import { patch } from "@web/core/utils/patch";
 
 patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
-        if (!this.pos.config.nsoft_enabled) {
-            return super.validateOrder(...arguments);
-        }
-
         const order = this.currentOrder;
-        this.pos.last_nsoft_receipt_id = null; // Išvalome seną ID
         
         const getVal = (obj, prop) => typeof obj[prop] === 'function' ? obj[prop]() : obj[prop];
         const trueTotal = getVal(order, 'get_total_with_tax') || order.amount_total || 0;
@@ -25,11 +20,9 @@ patch(PaymentScreen.prototype, {
             return { qty, price, total, name };
         });
 
-        // TOBULAS DUOMENŲ PAKETAS: Pridedame nSoft nustatymus, kad Python nereikėtų jų ieškoti
+        // PERDUODAME TIK KASOS ID. Python pats susiras slaptažodį DB!
         const orderData = {
-            api_url: this.pos.config.nsoft_api_url,
-            pos_id: this.pos.config.nsoft_pos_id,
-            token: this.pos.config.nsoft_token,
+            config_id: this.pos.config.id,
             true_total: trueTotal,
             lines: linesData
         };
@@ -38,13 +31,24 @@ patch(PaymentScreen.prototype, {
             const orm = this.env.services.orm;
             const result = await orm.call("pos.order", "action_send_receipt_to_nsoft", [orderData]);
             
-            if (result && result.success) {
-                this.pos.last_nsoft_receipt_id = result.receipt_id;
+            if (result && result.success && result.receipt_id) {
+                order.nsoft_receipt_id = result.receipt_id;
             } else {
-                console.error("nSoft serverio klaida:", result ? result.error : "Nėra atsakymo");
+                console.log("nSoft ignoravo arba atmetė:", result);
             }
         } catch (error) {
-            console.error("Klaida susisiekiant su Python:", error);
+            console.error("Klaida bendraujant su Python:", error);
+        }
+
+        // Įskiepijame gautą ID į kvitą
+        if (typeof order.export_for_printing === 'function' && !order._nsoft_patched) {
+            const originalExport = order.export_for_printing.bind(order);
+            order.export_for_printing = () => {
+                const receipt = originalExport();
+                receipt.nsoft_receipt_id = order.nsoft_receipt_id || false;
+                return receipt;
+            };
+            order._nsoft_patched = true;
         }
 
         return super.validateOrder(...arguments);
