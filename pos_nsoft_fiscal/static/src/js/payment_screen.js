@@ -9,11 +9,8 @@ patch(PaymentScreen.prototype, {
         }
 
         const order = this.currentOrder;
+        this.pos.last_nsoft_receipt_id = null; // Išvalome seną ID
         
-        // Išvalome seną ID, kad neatsispausdintų ant kito čekio
-        this.pos.last_nsoft_receipt_id = null;
-        
-        const sessionId = this.pos.session ? this.pos.session.id : (this.pos.pos_session ? this.pos.pos_session.id : null);
         const getVal = (obj, prop) => typeof obj[prop] === 'function' ? obj[prop]() : obj[prop];
         const trueTotal = getVal(order, 'get_total_with_tax') || order.amount_total || 0;
         const orderLines = getVal(order, 'get_orderlines') || order.lines || [];
@@ -28,8 +25,11 @@ patch(PaymentScreen.prototype, {
             return { qty, price, total, name };
         });
 
+        // TOBULAS DUOMENŲ PAKETAS: Pridedame nSoft nustatymus, kad Python nereikėtų jų ieškoti
         const orderData = {
-            pos_session_id: sessionId,
+            api_url: this.pos.config.nsoft_api_url,
+            pos_id: this.pos.config.nsoft_pos_id,
+            token: this.pos.config.nsoft_token,
             true_total: trueTotal,
             lines: linesData
         };
@@ -37,12 +37,14 @@ patch(PaymentScreen.prototype, {
         try {
             const orm = this.env.services.orm;
             const result = await orm.call("pos.order", "action_send_receipt_to_nsoft", [orderData]);
+            
             if (result && result.success) {
-                // Saugome globalioje kasos atmintyje!
                 this.pos.last_nsoft_receipt_id = result.receipt_id;
+            } else {
+                console.error("nSoft serverio klaida:", result ? result.error : "Nėra atsakymo");
             }
         } catch (error) {
-            console.error("nSoft klaida:", error);
+            console.error("Klaida susisiekiant su Python:", error);
         }
 
         return super.validateOrder(...arguments);
