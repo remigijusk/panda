@@ -12,10 +12,20 @@ class PosOrder(models.Model):
 
     @api.model
     def action_send_receipt_to_nsoft(self, order_data):
-        # Nustatymus imame tiesiai iš JS atsiųstų duomenų!
-        api_url = order_data.get('api_url')
-        pos_id = order_data.get('pos_id')
-        token = order_data.get('token')
+        config_id = order_data.get('config_id')
+        if not config_id:
+            return {'success': False, 'error': 'Nėra config_id'}
+        
+        # Saugiai atidarome kasos nustatymus iš duomenų bazės
+        config = self.env['pos.config'].browse(config_id)
+        
+        # Tikriname, ar įjungta nSoft varnelė
+        if not config.nsoft_enabled:
+            return {'success': True, 'ignored': True}
+
+        api_url = config.nsoft_api_url
+        pos_id = config.nsoft_pos_id
+        token = config.nsoft_token
 
         if not token or not api_url or not pos_id:
             return {'success': False, 'error': 'Trūksta nSoft API nustatymų.'}
@@ -40,7 +50,7 @@ class PosOrder(models.Model):
                 name = f"{name} ({orig_qty} x {orig_price} EUR)"
 
             item_data = {
-                'description': name,
+                'description': name[:50], # Apsauga nuo per ilgų pavadinimų
                 'quantity': 1.0,         
                 'unitPrice': line_amt,   
                 'lineAmount': line_amt,
