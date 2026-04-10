@@ -1,26 +1,10 @@
 /** @odoo-module */
-import { Order } from "@point_of_sale/app/store/models";
 import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
 import { patch } from "@web/core/utils/patch";
-import { useService } from "@web/core/utils/hooks";
 
-// 1. SAUGUS ČEKIO PAPILDYMAS (be OWL klaidų)
-patch(Order.prototype, {
-    export_for_printing() {
-        const receipt = super.export_for_printing(...arguments);
-        receipt.nsoft_receipt_id = this.nsoft_receipt_id || false;
-        return receipt;
-    }
-});
-
-// 2. DUOMENŲ IŠSIUNTIMAS PRIEŠ ATIDARANT ČEKĮ
 patch(PaymentScreen.prototype, {
-    setup() {
-        super.setup(...arguments);
-        this.orm = useService("orm");
-    },
     async validateOrder(isForceValidate) {
-        // Jei varnelė nuimta - dirbame standartiškai be nSoft
+        // 1. Saugiklis: jeigu nSoft išjungtas, tęsiame darbą standartiškai
         if (!this.pos.config.nsoft_enabled) {
             return super.validateOrder(...arguments);
         }
@@ -28,6 +12,7 @@ patch(PaymentScreen.prototype, {
         const order = this.currentOrder;
         const sessionId = this.pos.session ? this.pos.session.id : (this.pos.pos_session ? this.pos.pos_session.id : null);
         
+        // 2. Ištraukiame užsakymo duomenis
         const getVal = (obj, prop) => typeof obj[prop] === 'function' ? obj[prop]() : obj[prop];
         const trueTotal = getVal(order, 'get_total_with_tax') || order.amount_total || 0;
         const orderLines = getVal(order, 'get_orderlines') || order.lines || [];
@@ -48,9 +33,10 @@ patch(PaymentScreen.prototype, {
             lines: linesData
         };
 
+        // 3. Fone, prieš atspausdinant čekį, paprašome nSoft sugeneruoti ID
         try {
-            // Gauname ID iš nSoft ir prisegame jį prie čekio
-            const result = await this.orm.call("pos.order", "action_send_receipt_to_nsoft", [orderData]);
+            const orm = this.env.services.orm;
+            const result = await orm.call("pos.order", "action_send_receipt_to_nsoft", [orderData]);
             if (result && result.success) {
                 order.nsoft_receipt_id = result.receipt_id;
             } else {
@@ -61,6 +47,18 @@ patch(PaymentScreen.prototype, {
             order.nsoft_receipt_id = "Ryšio klaida";
         }
 
+        // 4. Atiduodame gautą ID atspausdinimui į kvitą
+        if (typeof order.export_for_printing === 'function' && !order.nsoft_patched) {
+            const originalExport = order.export_for_printing.bind(order);
+            order.export_for_printing = () => {
+                const receipt = originalExport();
+                receipt.nsoft_receipt_id = order.nsoft_receipt_id;
+                return receipt;
+            };
+            order.nsoft_patched = true;
+        }
+
+        // Tęsiame Odoo darbą
         return super.validateOrder(...arguments);
     }
 });
