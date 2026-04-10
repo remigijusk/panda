@@ -3,11 +3,12 @@
     <t t-name="pos_nsoft_fiscal.OrderReceipt" t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension">
         <xpath expr="//div[hasclass('pos-receipt-contact')]" position="after">
             <t t-if="props.data and props.data.nsoft_receipt_id">
-                <div class="pos-receipt-center-align" style="margin-top: 10px; border-top: 1px dashed black; padding-top: 5px;">
+                <div class="pos-receipt-center-align" style="margin-top: 10px; border-top: 1px dashed black; padding-top: 5px; text-align: center;">
                     <div><strong>Fiskalinis čekis (i.EKA)</strong></div>
                     <div>nSoft ID: <t t-esc="props.data.nsoft_receipt_id"/></div>
+                    
                     <div style="margin-top: 10px;">
-                        <img t-att-src="'/report/barcode/QR/' + props.data.nsoft_receipt_id" style="width: 120px; height: 120px;"/>
+                        <img t-att-src="'/report/barcode/QR/' + props.data.nsoft_receipt_id" style="width: 120px; height: 120px; margin: 0 auto; display: block;"/>
                     </div>
                 </div>
             </t>
