@@ -1,21 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
-    <t t-name="pos_nsoft_fiscal.OrderReceipt" t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension">
-        <xpath expr="//div[hasclass('pos-receipt')]" position="inside">
-            
-            <t t-set="nsoft_id" t-value="env.services.pos.last_nsoft_receipt_id"/>
-            
-            <t t-if="nsoft_id">
-                <div class="pos-receipt-center-align" style="margin-top: 20px; border-top: 1px dashed black; padding-top: 10px; text-align: center;">
-                    <div><strong>Fiskalinis čekis (i.EKA)</strong></div>
-                    <div>nSoft ID: <t t-esc="nsoft_id"/></div>
-                    
-                    <div style="margin-top: 10px;">
-                        <img t-att-src="'/report/barcode/QR/' + nsoft_id" style="width: 120px; height: 120px; margin: 0 auto; display: block;"/>
-                    </div>
-                </div>
-            </t>
-            
-        </xpath>
-    </t>
+        <t t-name="pos_nsoft_fiscal.OrderReceipt"
+                   t-inherit="point_of_sale.OrderReceipt"
+                   t-inherit-mode="extension">
+
+                    <xpath expr="//div[hasclass('pos-receipt')]" position="inside">
+
+                                    <t t-set="nsoft_id" t-value="props.data.nsoft_receipt_id"/>
+                                    <t t-set="nsoft_err" t-value="props.data.nsoft_error"/>
+
+                                    <t t-if="nsoft_id">
+                                                        <div class="pos-receipt-center-align"
+                                                                                 style="margin-top:20px; border-top:1px dashed #000; padding-top:10px; text-align:center;">
+                                                                                <div><strong>Fiskalinis cekis (i.EKA)</strong></div>
+                                                                                <div style="font-size:11px; word-break:break-all;">
+                                                                                                            nSoft ID: <t t-esc="nsoft_id"/>
+                                                                                    </div>
+                                                                                <div style="margin-top:10px;">
+                                                                                                            <img t-att-src="'/report/barcode/QR/' + nsoft_id"
+                                                                                                                                             style="width:120px; height:120px; margin:0 auto; display:block;"/>
+                                                                                    </div>
+                                                        </div>
+                                    </t>
+
+                                    <t t-if="!nsoft_id and nsoft_err">
+                                                        <div class="pos-receipt-center-align"
+                                                                                 style="margin-top:20px; border-top:1px dashed #000; padding-top:10px; text-align:center; color:red;">
+                                                                                <div><strong>i.EKA klaida</strong></div>
+                                                                                <div style="font-size:10px; word-break:break-all;">
+                                                                                                            <t t-esc="nsoft_err"/>
+                                                                                    </div>
+                                                        </div>
+                                    </t>
+
+                    </xpath>
+        </t>
 </templates>
