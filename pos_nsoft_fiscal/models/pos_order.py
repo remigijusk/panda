@@ -5,105 +5,116 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
-class PosOrder(models.Model):
-    _inherit = 'pos.order'
 
-    nsoft_receipt_id = fields.Char(string='nSoft Receipt ID', readonly=True, copy=False)
+class PosOrder(models.Model):
+        _inherit = 'pos.order'
+
+    nsoft_receipt_id = fields.Char(
+                string='nSoft Receipt ID',
+                readonly=True,
+                copy=False,
+                index=True,
+    )
+    nsoft_error = fields.Char(
+                string='nSoft Klaida',
+                readonly=True,
+                copy=False,
+    )
 
     @api.model
-    def action_send_receipt_to_nsoft(self, order_data):
-        try:
-            config_id = order_data.get('config_id')
-            if not config_id:
-                return {'success': False, 'error': 'Nėra config_id iš kasos lango'}
-            
-            config = self.env['pos.config'].sudo().browse(config_id)
-            
-            if not config.nsoft_enabled:
-                return {'success': False, 'error': 'nSoft išjungtas nustatymuose'}
+    def _process_order(self, order, draft, existing_order):
+                order_id = super()._process_order(order, draft, existing_order)
+                try:
+                                pos_order = self.browse(order_id)
+                                if pos_order and pos_order.config_id.nsoft_enabled:
+                                                    pos_order._send_to_nsoft()
+                except Exception as e:
+                                _logger.error("nSoft: Nepavyko išsiųsti užsakymo %s: %s", order_id, e)
+                            return order_id
 
-            api_url = config.nsoft_api_url
-            pos_id = config.nsoft_pos_id
-            token = config.nsoft_token
+    def _send_to_nsoft(self):
+                self.ensure_one()
+        config = self.config_id
+        api_url = config.nsoft_api_url
+        pos_id = config.nsoft_pos_id
+        token = config.nsoft_token
 
-            if not token or not api_url or not pos_id:
-                return {'success': False, 'error': 'Trūksta nSoft nustatymų Odoo sistemoje'}
+        if not api_url or not pos_id or not token:
+                        _logger.warning("nSoft: Truksta nustatymu – praleidziama.")
+                        return
 
-            true_total = order_data.get('true_total', 0.0)
-            is_refund = true_total < 0
-            items_list = []
-            sum_of_lines = 0.0
-            
-            for l in order_data.get('lines', []):
-                qty = abs(l.get('qty', 0))
-                price = abs(l.get('price', 0))
-                line_total = abs(l.get('total', 0))
-                line_amt = round(line_total, 2)
-                sum_of_lines += line_amt
-                
-                orig_qty = round(qty, 3)
-                orig_price = round(price, 2)
-                
-                name = l.get('name', 'Prekė')
-                if orig_qty != 1.0 and orig_qty != 0.0:
-                    name = f"{name} ({orig_qty} x {orig_price} EUR)"
+        is_refund = self.amount_total < 0
+        items_list = []
+        sum_of_lines = 0.0
 
-                item_data = {
-                    'description': name[:50], 
-                    'quantity': 1.0,         
-                    'unitPrice': line_amt,   
-                    'lineAmount': line_amt,
-                    'vatCode': 'A'
-                }
-
-                if is_refund:
-                    item_data['origDocNumber'] = 1
-                    item_data['origCRNumber'] = pos_id
-                    item_data['otherDocNumber'] = "Grąžinimas"
-
-                items_list.append(item_data)
-            
-            abs_true_total = round(abs(true_total), 2)
-            sum_of_lines = round(sum_of_lines, 2)
-            rounding_diff = round(abs_true_total - sum_of_lines, 2)
-
-            if rounding_diff != 0.0:
-                if rounding_diff > 0:
-                    rounding_item = {
-                        'description': "Apvalinimas",
-                        'quantity': 1.0,
-                        'unitPrice': abs(rounding_diff),
-                        'lineAmount': abs(rounding_diff),
-                        'vatCode': 'A'
-                    }
-                    if is_refund:
-                        rounding_item['origDocNumber'] = 1
-                        rounding_item['origCRNumber'] = pos_id
-                        rounding_item['otherDocNumber'] = "Grąžinimas"
-                    items_list.append(rounding_item)
-                else:
-                    if items_list:
-                        items_list[-1]['unitPrice'] = round(items_list[-1]['unitPrice'] + rounding_diff, 2)
-                        items_list[-1]['lineAmount'] = round(items_list[-1]['lineAmount'] + rounding_diff, 2)
-
-            payments = [{'method': 'cash', 'amount': abs_true_total}]
-
+        for line in self.lines:
+                        qty = abs(line.qty)
+                        price = abs(line.price_unit)
+                        line_amt = round(abs(line.price_subtotal_incl), 2)
+                        sum_of_lines += line_amt
+                        name = line.full_product_name or line.product_id.display_name or "Preke"
+                        if round(qty, 3) != 1.0 and round(qty, 3) != 0.0:
+                                            name = f"{name} ({round(qty, 3)} x {round(price, 2)} EUR)"
+                                        item_data = {
+                                                            'description': name[:50],
+                                                            'quantity': 1.0,
+                                                            'unitPrice': line_amt,
+                                                            'lineAmount': line_amt,
+                                                            'vatCode': 'A',
+                                        }
             if is_refund:
-                payload = {'returns': items_list, 'payments': payments}
-                endpoint = '/return'
-            else:
-                payload = {'sales': items_list, 'payments': payments}
-                endpoint = '/receipt'
+                                item_data['origDocNumber'] = 1
+                                item_data['origCRNumber'] = pos_id
+                                item_data['otherDocNumber'] = "Grazinimas"
+                            items_list.append(item_data)
 
-            url = f"{api_url.rstrip('/')}/cr/{pos_id}{endpoint}"
-            headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+        abs_true_total = round(abs(self.amount_total), 2)
+        sum_of_lines = round(sum_of_lines, 2)
+        rounding_diff = round(abs_true_total - sum_of_lines, 2)
 
-            response = requests.post(url, json=payload, headers=headers, timeout=10)
-            
-            if response.status_code in [200, 201]:
-                return {'success': True, 'receipt_id': response.json().get('receiptId', str(response.status_code))}
-            else:
-                return {'success': False, 'error': f"Atmetė nSoft ({response.status_code}): {response.text}"}
-                
-        except Exception as e:
-            return {'success': False, 'error': f"Python lūžo: {str(e)}"}
+        if rounding_diff != 0.0:
+                        if rounding_diff > 0:
+                                            rounding_item = {
+                                                                    'description': "Apvalinimas",
+                                                                    'quantity': 1.0,
+                                                                    'unitPrice': abs(rounding_diff),
+                                                                    'lineAmount': abs(rounding_diff),
+                                                                    'vatCode': 'A',
+                                            }
+                                            if is_refund:
+                                                                    rounding_item['origDocNumber'] = 1
+                                                                    rounding_item['origCRNumber'] = pos_id
+                                                                    rounding_item['otherDocNumber'] = "Grazinimas"
+                                                                items_list.append(rounding_item)
+elif items_list:
+                items_list[-1]['unitPrice'] = round(items_list[-1]['unitPrice'] + rounding_diff, 2)
+                items_list[-1]['lineAmount'] = round(items_list[-1]['lineAmount'] + rounding_diff, 2)
+
+        payment_method = 'cash'
+        for payment in self.payment_ids:
+                        method_name = (payment.payment_method_id.name or '').lower()
+            if any(k in method_name for k in ('card', 'kortel', 'bank')):
+                                payment_method = 'card'
+                break
+
+        payments = [{'method': payment_method, 'amount': abs_true_total}]
+
+        if is_refund:
+                        payload = {'returns': items_list, 'payments': payments}
+            endpoint = '/return'
+else:
+            payload = {'sales': items_list, 'payments': payments}
+            endpoint = '/receipt'
+
+        url = f"{api_url.rstrip('/')}/cr/{pos_id}{endpoint}"
+        headers = {
+                        'accept': '– %s", err)
+            except requests.exceptions.Timeout:
+                        err = "Timeout – nSoft serveris neatsakė per 10s"
+                                    self.sudo().write({'nsoft_error': err})
+                                                _logger.error("nSoft: %s", err)
+                                                        except Exception as e:
+                                                                    err = str(e)[:200]
+                                                                                self.sudo().write({'nsoft_error': err})
+                                                                                            _logger.error("nSoft: Išimtis – %s", err)
+                                                                                            
