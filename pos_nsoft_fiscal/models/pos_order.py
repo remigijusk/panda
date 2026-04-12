@@ -22,7 +22,8 @@ class PosOrder(models.Model):
     )
 
     @api.model
-    def _process_order(self, order, draft, existing_order):
+    def _process_order(self, order, draft, existing_order=False):
+        """Override to send fiscalization request AFTER the order is saved."""
         order_id = super()._process_order(order, draft, existing_order)
         try:
             pos_order = self.browse(order_id)
