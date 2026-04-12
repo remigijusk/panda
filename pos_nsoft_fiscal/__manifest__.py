@@ -15,6 +15,7 @@
         'point_of_sale._assets_pos': [
             'pos_nsoft_fiscal/static/src/js/payment_screen.js',
             'pos_nsoft_fiscal/static/src/xml/OrderReceipt.xml',
+            'pos_nsoft_fiscal/static/src/xml/ProductScreen.xml',
         ],
     },
     'license': 'LGPL-3',
