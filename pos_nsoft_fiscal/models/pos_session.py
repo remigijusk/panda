@@ -38,6 +38,20 @@ class PosSession(models.Model):
             _logger.error("nSoft: Klaida siunčiant ryto įdėjimą: %s", e)
         return res
 
+    def action_pos_session_open(self):
+        """Iššaukiamas kai sesija pereina į 'opened' būseną."""
+        res = super().action_pos_session_open()
+        for session in self:
+            if not session.config_id.nsoft_enabled:
+                continue
+            try:
+                amount = float(session.cash_register_balance_start or 0.0)
+                if amount > 0:
+                    self._send_nsoft_cash_operation('in', amount)
+            except Exception as e:
+                _logger.error("nSoft: Klaida siunčiant ryto įdėjimą: %s", e)
+        return res
+
     def try_cash_in_out(self, *args, **kwargs):
         """Called for cash in/out operations during session."""
         res = super().try_cash_in_out(*args, **kwargs)
