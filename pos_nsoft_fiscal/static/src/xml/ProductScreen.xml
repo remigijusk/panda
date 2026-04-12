@@ -1,3 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
+
+  <t t-name="pos_nsoft_fiscal.Chrome"
+     t-inherit="point_of_sale.Chrome"
+     t-inherit-mode="extension">
+
+    <xpath expr="//DropdownItem[last()]" position="before">
+      <t t-if="pos.config.nsoft_enabled">
+        <DropdownItem onSelected="() => this.printNsoftXReport()">
+          &#128202; X Ataskaita (i.EKA)
+        </DropdownItem>
+      </t>
+    </xpath>
+
+  </t>
+
 </templates>
