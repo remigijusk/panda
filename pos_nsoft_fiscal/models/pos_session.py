@@ -114,7 +114,7 @@ class PosSession(models.Model):
             url = f"{api_url.rstrip('/')}/cr/{pos_id}/fis-day"
             headers = self._get_nsoft_headers(token)
             # Calculate cash in drawer at session close
-            cash_in_drawer = session.cash_register_total_entry_encoding or 0.0
+            cash_in_drawer = session.cash_register_balance_end_real or 0.0
             payload = {
                 "output": {"format": "native", "lineWidth": 80},
                 "cashDrawer": round(float(cash_in_drawer), 2),
