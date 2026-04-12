@@ -2,19 +2,27 @@
 /**
  * nSoft fiscalization - frontend patch (Odoo 19 OWL)
  *
- * Patches Order.export_for_printing() to forward nsoft_receipt_id
- * and nsoft_error fields (already loaded from DB via _loader_params_pos_order)
- * into the receipt template data so OWL can render them.
+ * The backend already saves nsoft_receipt_id to pos.order via _process_order.
+ * _loader_params_pos_order loads this field into the POS client.
+ * This patch injects nsoft fields into the receipt props so the template can render them.
  */
 
 import { patch } from "@web/core/utils/patch";
-import { PosOrder } from "@point_of_sale/app/models/pos_order";
+import { ReceiptScreen } from "@point_of_sale/app/screens/receipt_screen/receipt_screen";
 
-patch(PosOrder.prototype, {
-    export_for_printing() {
-        const result = super.export_for_printing(...arguments);
-        result.nsoft_receipt_id = this.nsoft_receipt_id || false;
-        result.nsoft_error = this.nsoft_error || false;
-        return result;
+patch(ReceiptScreen.prototype, {
+    get orderUiState() {
+        const state = super.orderUiState;
+        return state;
+    },
+
+    get receiptData() {
+        const data = super.receiptData || {};
+        const order = this.currentOrder;
+        if (order) {
+            data.nsoft_receipt_id = order.nsoft_receipt_id || false;
+            data.nsoft_error = order.nsoft_error || false;
+        }
+        return data;
     },
 });
