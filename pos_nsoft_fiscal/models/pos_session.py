@@ -15,21 +15,26 @@ class PosSession(models.Model):
         result['search_params']['fields'].append('nsoft_error')
         return result
 
+    def action_pos_session_open(self):
+        """Iššaukiamas kai sesija pereina į 'opened' būseną.
+        Siunčia ryto cash-in į nSoft pagal balance_start."""
+        res = super().action_pos_session_open()
+        for session in self:
+            if not session.config_id.nsoft_enabled:
+                continue
+            try:
+                amount = float(session.cash_register_balance_start or 0.0)
+                if amount > 0:
+                    self._send_nsoft_cash_operation('in', amount)
+                    _logger.info("nSoft: Ryto atidarymas cash-in %.2f (sesija %s)",
+                                 amount, session.name)
+            except Exception as e:
+                _logger.error("nSoft: Ryto atidarymo klaida: %s", e)
+        return res
+
     def action_pos_session_closing_control(self, *args, **kwargs):
         res = super().action_pos_session_closing_control(*args, **kwargs)
         self._send_nsoft_z_report()
-        return res
-
-    def set_opening_control(self, opening_notes, opening_cash):
-        """Odoo 19: iššaukiamas kai kasininkė patvirtina ryto balansą."""
-        res = super().set_opening_control(opening_notes, opening_cash)
-        try:
-            amount = float(opening_cash or 0.0)
-            if amount > 0:
-                self._send_nsoft_cash_operation('in', amount)
-                _logger.info("nSoft: Ryto atidarymas cash-in %.2f", amount)
-        except Exception as e:
-            _logger.error("nSoft: Klaida siunčiant ryto įdėjimą: %s", e)
         return res
 
     def try_cash_in_out(self, *args, **kwargs):
@@ -108,7 +113,7 @@ class PosSession(models.Model):
                 }
 
     def _send_nsoft_z_report(self):
-        """Z ataskaita uždarius sesiją – be cashDrawer (DEMO nepalaikomos)."""
+        """Z ataskaita uždarius sesiją."""
         for session in self:
             if not session.config_id.nsoft_enabled:
                 continue
@@ -120,8 +125,8 @@ class PosSession(models.Model):
             payload = {"output": {"format": "native", "lineWidth": 80}}
             try:
                 response = requests.post(url, json=payload, headers=headers, timeout=15)
-                _logger.info("nSoft Z ataskaita: %s -> %s %s",
-                             session.name, response.status_code, response.text[:100])
+                _logger.info("nSoft Z ataskaita: %s -> %s",
+                             session.name, response.status_code)
             except Exception as e:
                 _logger.error("nSoft Z-Ataskaitos klaida: %s", e)
 
