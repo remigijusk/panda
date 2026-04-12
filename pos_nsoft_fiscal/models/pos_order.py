@@ -22,9 +22,9 @@ class PosOrder(models.Model):
     )
 
     @api.model
-    def _process_order(self, order, draft, existing_order=False):
+    def _process_order(self, order, draft):
         """Override to send fiscalization request AFTER the order is saved."""
-        order_id = super()._process_order(order, draft, existing_order)
+        order_id = super()._process_order(order, draft)
         try:
             pos_order = self.browse(order_id)
             if pos_order and pos_order.config_id.nsoft_enabled:
