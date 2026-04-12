@@ -70,17 +70,36 @@ class PosSession(models.Model):
             try:
                 response = requests.post(url, json=payload, headers=headers, timeout=10)
                 response.raise_for_status()
+                data = response.json()
+                # Return receipt lines to frontend for Epson printing
+                lines = []
+                for item in (data.get('content') or []):
+                    doc = item.get('document') or {}
+                    for line in (doc.get('lines') or []):
+                        txt = line.get('text', '')
+                        if txt:
+                            lines.append(txt)
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
                     'params': {
-                        'title': 'Pavyko!',
-                        'message': 'X Ataskaita issiusta.',
+                        'title': 'X Ataskaita',
+                        'message': 'X Ataskaita išsiųsta į spausdintuvą.',
                         'type': 'success',
                     },
+                    'receipt_lines': lines,
                 }
             except Exception as e:
                 _logger.error("nSoft X-Ataskaitos klaida: %s", e)
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'Klaida',
+                        'message': f'X Ataskaitos klaida: {e}',
+                        'type': 'danger',
+                    },
+                }
 
     def _send_nsoft_z_report(self):
         for session in self:
