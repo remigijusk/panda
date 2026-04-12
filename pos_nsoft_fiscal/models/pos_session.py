@@ -76,7 +76,7 @@ class PosSession(models.Model):
                 for item in (data.get('content') or []):
                     doc = item.get('document') or {}
                     for line in (doc.get('lines') or []):
-                        txt = line.get('text', '')
+                        txt = line.get('content', '')
                         if txt:
                             lines.append(txt)
                 return {
