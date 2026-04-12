@@ -5,11 +5,13 @@
      t-inherit="point_of_sale.Chrome"
      t-inherit-mode="extension">
 
-    <xpath expr="//DropdownItem[last()]" position="before">
+    <xpath expr="//div[hasclass('pos-burger-menu-items')]" position="inside">
       <t t-if="pos.config.nsoft_enabled">
-        <DropdownItem onSelected="() => this.printNsoftXReport()">
+        <span class="o-dropdown-item dropdown-item o-navigable"
+              t-on-click="() => this.printNsoftXReport()"
+              role="menuitem">
           &#128202; X Ataskaita (i.EKA)
-        </DropdownItem>
+        </span>
       </t>
     </xpath>
 
