@@ -15,21 +15,28 @@ class PosSession(models.Model):
         result['search_params']['fields'].append('nsoft_error')
         return result
 
-    def action_pos_session_open(self):
-        """Iššaukiamas kai sesija pereina į 'opened' būseną.
-        Siunčia ryto cash-in į nSoft pagal balance_start."""
-        res = super().action_pos_session_open()
-        for session in self:
-            if not session.config_id.nsoft_enabled:
-                continue
-            try:
-                amount = float(session.cash_register_balance_start or 0.0)
-                if amount > 0:
-                    self._send_nsoft_cash_operation('in', amount)
-                    _logger.info("nSoft: Ryto atidarymas cash-in %.2f (sesija %s)",
-                                 amount, session.name)
-            except Exception as e:
-                _logger.error("nSoft: Ryto atidarymo klaida: %s", e)
+    def set_opening_control(self, opening_notes, opening_cash):
+        """Odoo 19: opening_control -> opened.
+        Siunciam cash-in i nSoft jei balance > 0."""
+        # Konvertuojam i float pries super() kad isvengtum TypeError
+        try:
+            cash_float = float(opening_cash or 0.0)
+        except (TypeError, ValueError):
+            cash_float = 0.0
+
+        res = super().set_opening_control(opening_notes, cash_float)
+
+        # Po sekmingo atidarymo – siunciam cash-in i nSoft
+        try:
+            if cash_float > 0:
+                for session in self:
+                    if session.config_id.nsoft_enabled:
+                        self._send_nsoft_cash_operation('in', cash_float)
+                        _logger.info("nSoft: Ryto atidarymas cash-in %.2f (%s)",
+                                     cash_float, session.name)
+        except Exception as e:
+            _logger.error("nSoft: Ryto atidarymo klaida: %s", e)
+
         return res
 
     def action_pos_session_closing_control(self, *args, **kwargs):
@@ -38,7 +45,6 @@ class PosSession(models.Model):
         return res
 
     def try_cash_in_out(self, *args, **kwargs):
-        """Cash in/out per dieną."""
         res = super().try_cash_in_out(*args, **kwargs)
         try:
             _type = kwargs.get('_type') or kwargs.get('type')
@@ -113,7 +119,6 @@ class PosSession(models.Model):
                 }
 
     def _send_nsoft_z_report(self):
-        """Z ataskaita uždarius sesiją."""
         for session in self:
             if not session.config_id.nsoft_enabled:
                 continue
@@ -131,7 +136,6 @@ class PosSession(models.Model):
                 _logger.error("nSoft Z-Ataskaitos klaida: %s", e)
 
     def _send_nsoft_cash_operation(self, direction, amount):
-        """Cash in/out operacija."""
         for session in self:
             if not session.config_id.nsoft_enabled:
                 continue
