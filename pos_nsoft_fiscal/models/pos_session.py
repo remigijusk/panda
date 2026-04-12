@@ -20,40 +20,20 @@ class PosSession(models.Model):
         self._send_nsoft_z_report()
         return res
 
-    def set_cashbox_pos(self, cashbox_value, notes):
-        """Called when opening session with initial cash."""
-        res = super().set_cashbox_pos(cashbox_value, notes)
-        if cashbox_value and cashbox_value > 0:
-            self._send_nsoft_cash_operation('in', cashbox_value)
-        return res
-
     def set_opening_control(self, opening_notes, opening_cash):
-        """Odoo 19: Called when opening register with initial cash amount."""
+        """Odoo 19: iššaukiamas kai kasininkė patvirtina ryto balansą."""
         res = super().set_opening_control(opening_notes, opening_cash)
         try:
             amount = float(opening_cash or 0.0)
             if amount > 0:
                 self._send_nsoft_cash_operation('in', amount)
+                _logger.info("nSoft: Ryto atidarymas cash-in %.2f", amount)
         except Exception as e:
             _logger.error("nSoft: Klaida siunčiant ryto įdėjimą: %s", e)
         return res
 
-    def action_pos_session_open(self):
-        """Iššaukiamas kai sesija pereina į 'opened' būseną."""
-        res = super().action_pos_session_open()
-        for session in self:
-            if not session.config_id.nsoft_enabled:
-                continue
-            try:
-                amount = float(session.cash_register_balance_start or 0.0)
-                if amount > 0:
-                    self._send_nsoft_cash_operation('in', amount)
-            except Exception as e:
-                _logger.error("nSoft: Klaida siunčiant ryto įdėjimą: %s", e)
-        return res
-
     def try_cash_in_out(self, *args, **kwargs):
-        """Called for cash in/out operations during session."""
+        """Cash in/out per dieną."""
         res = super().try_cash_in_out(*args, **kwargs)
         try:
             _type = kwargs.get('_type') or kwargs.get('type')
@@ -67,7 +47,7 @@ class PosSession(models.Model):
                 direction = 'out' if _type == 'out' or amount < 0 else 'in'
                 self._send_nsoft_cash_operation(direction, abs(amount))
         except Exception as e:
-            _logger.error("nSoft: Klaida traukiant cash_in_out duomenis: %s", e)
+            _logger.error("nSoft: Klaida traukiant cash_in_out: %s", e)
         return res
 
     def _get_nsoft_credentials(self, session):
@@ -128,7 +108,7 @@ class PosSession(models.Model):
                 }
 
     def _send_nsoft_z_report(self):
-        """Send Z report when closing session. Includes cash drawer balance."""
+        """Z ataskaita uždarius sesiją – be cashDrawer (DEMO nepalaikomos)."""
         for session in self:
             if not session.config_id.nsoft_enabled:
                 continue
@@ -137,20 +117,16 @@ class PosSession(models.Model):
                 continue
             url = f"{api_url.rstrip('/')}/cr/{pos_id}/fis-day"
             headers = self._get_nsoft_headers(token)
-            # Calculate cash in drawer at session close
-            cash_in_drawer = session.cash_register_balance_end_real or 0.0
-            payload = {
-                "output": {"format": "native", "lineWidth": 80},
-                "cashDrawer": round(float(cash_in_drawer), 2),
-            }
+            payload = {"output": {"format": "native", "lineWidth": 80}}
             try:
                 response = requests.post(url, json=payload, headers=headers, timeout=15)
-                _logger.info("nSoft Z ataskaita: %s -> %s", session.name, response.status_code)
+                _logger.info("nSoft Z ataskaita: %s -> %s %s",
+                             session.name, response.status_code, response.text[:100])
             except Exception as e:
                 _logger.error("nSoft Z-Ataskaitos klaida: %s", e)
 
     def _send_nsoft_cash_operation(self, direction, amount):
-        """Send cash in/out operation to nSoft."""
+        """Cash in/out operacija."""
         for session in self:
             if not session.config_id.nsoft_enabled:
                 continue
@@ -166,6 +142,6 @@ class PosSession(models.Model):
             }
             try:
                 response = requests.post(url, json=payload, headers=headers, timeout=10)
-                _logger.info("nSoft cash %s %.2f: %s", direction, amount, response.status_code)
+                _logger.info("nSoft cash %s %.2f -> %s", direction, amount, response.status_code)
             except Exception as e:
                 _logger.error("nSoft Pinigu judejimo klaida: %s", e)
