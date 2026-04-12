@@ -21,12 +21,15 @@ class PosSession(models.Model):
         return res
 
     def set_cashbox_pos(self, cashbox_value, notes):
+        """Called when opening session with initial cash."""
         res = super().set_cashbox_pos(cashbox_value, notes)
-        if cashbox_value > 0:
+        # Morning opening: send cash-in to nSoft (initial drawer amount)
+        if cashbox_value and cashbox_value > 0:
             self._send_nsoft_cash_operation('in', cashbox_value)
         return res
 
     def try_cash_in_out(self, *args, **kwargs):
+        """Called for cash in/out operations during session."""
         res = super().try_cash_in_out(*args, **kwargs)
         try:
             _type = kwargs.get('_type') or kwargs.get('type')
@@ -71,7 +74,6 @@ class PosSession(models.Model):
                 response = requests.post(url, json=payload, headers=headers, timeout=10)
                 response.raise_for_status()
                 data = response.json()
-                # Return receipt lines to frontend for Epson printing
                 lines = []
                 for item in (data.get('content') or []):
                     doc = item.get('document') or {}
@@ -102,6 +104,7 @@ class PosSession(models.Model):
                 }
 
     def _send_nsoft_z_report(self):
+        """Send Z report when closing session. Includes cash drawer balance."""
         for session in self:
             if not session.config_id.nsoft_enabled:
                 continue
@@ -110,13 +113,20 @@ class PosSession(models.Model):
                 continue
             url = f"{api_url.rstrip('/')}/cr/{pos_id}/fis-day"
             headers = self._get_nsoft_headers(token)
-            payload = {"output": {"format": "native", "lineWidth": 80}}
+            # Calculate cash in drawer at session close
+            cash_in_drawer = session.cash_register_total_entry_encoding or 0.0
+            payload = {
+                "output": {"format": "native", "lineWidth": 80},
+                "cashDrawer": round(float(cash_in_drawer), 2),
+            }
             try:
-                requests.post(url, json=payload, headers=headers, timeout=10)
+                response = requests.post(url, json=payload, headers=headers, timeout=15)
+                _logger.info("nSoft Z ataskaita: %s -> %s", session.name, response.status_code)
             except Exception as e:
                 _logger.error("nSoft Z-Ataskaitos klaida: %s", e)
 
     def _send_nsoft_cash_operation(self, direction, amount):
+        """Send cash in/out operation to nSoft."""
         for session in self:
             if not session.config_id.nsoft_enabled:
                 continue
@@ -128,9 +138,10 @@ class PosSession(models.Model):
             payload = {
                 "output": {"format": "native", "lineWidth": 80},
                 "direction": direction,
-                "amount": float(amount),
+                "amount": round(float(amount), 2),
             }
             try:
-                requests.post(url, json=payload, headers=headers, timeout=10)
+                response = requests.post(url, json=payload, headers=headers, timeout=10)
+                _logger.info("nSoft cash %s %.2f: %s", direction, amount, response.status_code)
             except Exception as e:
                 _logger.error("nSoft Pinigu judejimo klaida: %s", e)
