@@ -1,14 +1,9 @@
 /** @odoo-module */
-/**
- * nSoft X Ataskaita – POS hamburger menu mygtukas
- * Prideda "X Ataskaita" mygtuką šalia "Grynųjų į/iš-nešimas"
- */
-
 import { patch } from "@web/core/utils/patch";
-import { ProductScreen } from "@point_of_sale/app/screens/product_screen/product_screen";
+import { Chrome } from "@point_of_sale/app/pos_app";
 import { useService } from "@web/core/utils/hooks";
 
-patch(ProductScreen.prototype, {
+patch(Chrome.prototype, {
     setup() {
         super.setup(...arguments);
         this.orm = useService("orm");
@@ -24,7 +19,7 @@ patch(ProductScreen.prototype, {
                 [[sessionId]]
             );
             if (result) {
-                this.notification.add("X Ataskaita išsiųsta į spausdintuvą", {
+                this.notification.add("X Ataskaita išsiųsta į spausdintuvą!", {
                     type: "success",
                     title: "Pavyko!",
                 });
