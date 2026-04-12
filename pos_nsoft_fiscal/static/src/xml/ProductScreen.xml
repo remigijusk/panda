@@ -1,21 +1,3 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
-
-  <!-- X Ataskaita mygtukas hamburger meniu (Chrome = POS pagrindinis komponentas) -->
-  <t t-name="pos_nsoft_fiscal.Chrome"
-     t-inherit="point_of_sale.Chrome"
-     t-inherit-mode="extension">
-
-    <xpath expr="//li[hasclass('close-button')]" position="before">
-      <t t-if="pos.config.nsoft_enabled">
-        <li class="nsoft-x-report-button"
-            t-on-click="printNsoftXReport"
-            style="cursor:pointer;padding:8px 16px;">
-          &#128202; X Ataskaita (i.EKA)
-        </li>
-      </t>
-    </xpath>
-
-  </t>
-
 </templates>
