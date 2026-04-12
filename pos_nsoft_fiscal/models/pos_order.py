@@ -23,7 +23,6 @@ class PosOrder(models.Model):
 
     @api.model
     def _process_order(self, order, draft):
-        """Override to send fiscalization request AFTER the order is saved."""
         order_id = super()._process_order(order, draft)
         try:
             pos_order = self.browse(order_id)
@@ -56,49 +55,66 @@ class PosOrder(models.Model):
             name = line.full_product_name or line.product_id.display_name or "Preke"
             if round(qty, 3) != 1.0 and round(qty, 3) != 0.0:
                 name = f"{name} ({round(qty, 3)} x {round(price, 2)} EUR)"
+
+            # Tax calculation
+            tax_rate = 21
+            tax_name = 'PVM21'
+            if line.tax_ids:
+                tax = line.tax_ids[0]
+                tax_rate = int(tax.amount)
+                tax_name = f'PVM{tax_rate}'
+            tax_amount = round(line_amt - line_amt / (1 + tax_rate / 100), 2)
+            base_amount = round(line_amt - tax_amount, 2)
+
             item_data = {
                 'description': name[:50],
                 'quantity': 1.0,
                 'unitPrice': line_amt,
                 'lineAmount': line_amt,
-                'vatCode': 'A',
+                'taxes': [{
+                    'name': tax_name,
+                    'rate': tax_rate,
+                    'amount': tax_amount,
+                    'base': base_amount,
+                }],
             }
-            if is_refund:
-                item_data['origDocNumber'] = 1
-                item_data['origCRNumber'] = pos_id
-                item_data['otherDocNumber'] = "Grazinimas"
             items_list.append(item_data)
 
+        # Fix rounding
         abs_true_total = round(abs(self.amount_total), 2)
         sum_of_lines = round(sum_of_lines, 2)
         rounding_diff = round(abs_true_total - sum_of_lines, 2)
-
-        if rounding_diff != 0.0:
-            if rounding_diff > 0:
+        if abs(rounding_diff) > 0.001:
+            if abs(rounding_diff) <= 0.05:
                 rounding_item = {
-                    'description': "Apvalinimas",
+                    'description': 'Suapvalinimas',
                     'quantity': 1.0,
-                    'unitPrice': abs(rounding_diff),
-                    'lineAmount': abs(rounding_diff),
-                    'vatCode': 'A',
+                    'unitPrice': rounding_diff,
+                    'lineAmount': rounding_diff,
+                    'taxes': [{'name': 'PVM21', 'rate': 21, 'amount': 0.0, 'base': rounding_diff}],
                 }
-                if is_refund:
-                    rounding_item['origDocNumber'] = 1
-                    rounding_item['origCRNumber'] = pos_id
-                    rounding_item['otherDocNumber'] = "Grazinimas"
                 items_list.append(rounding_item)
             elif items_list:
                 items_list[-1]['unitPrice'] = round(items_list[-1]['unitPrice'] + rounding_diff, 2)
                 items_list[-1]['lineAmount'] = round(items_list[-1]['lineAmount'] + rounding_diff, 2)
 
-        payment_method = 'cash'
+        # Build payments list - support multiple payment methods
+        # nSoft payment types: cashFis (cash), cardFis (card/bank), voucherFis (voucher)
+        payments = []
         for payment in self.payment_ids:
             method_name = (payment.payment_method_id.name or '').lower()
-            if any(k in method_name for k in ('card', 'kortel', 'bank')):
-                payment_method = 'card'
-                break
+            amt = round(abs(payment.amount), 2)
+            if any(k in method_name for k in ('card', 'kortel', 'bank', 'banko', 'visa', 'master')):
+                nsoft_method = 'cardFis'
+            elif any(k in method_name for k in ('voucher', 'kupon', 'dovanu')):
+                nsoft_method = 'voucherFis'
+            else:
+                nsoft_method = 'cashFis'
+            payments.append({'method': nsoft_method, 'amount': amt})
 
-        payments = [{'method': payment_method, 'amount': abs_true_total}]
+        # If no payments found, fallback
+        if not payments:
+            payments = [{'method': 'cashFis', 'amount': abs_true_total}]
 
         if is_refund:
             payload = {'returns': items_list, 'payments': payments}
@@ -113,22 +129,15 @@ class PosOrder(models.Model):
             'Authorization': f'Bearer {token}',
             'Content-Type': 'application/json',
         }
-
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=10)
-            if response.status_code in [200, 201]:
-                receipt_id = response.json().get('receiptId', str(response.status_code))
-                self.sudo().write({'nsoft_receipt_id': receipt_id, 'nsoft_error': False})
-                _logger.info("nSoft: Sekmingai fiskalizuota. receiptId=%s", receipt_id)
-            else:
-                err = f"HTTP {response.status_code}: {response.text[:200]}"
-                self.sudo().write({'nsoft_error': err})
-                _logger.error("nSoft: Serveris atmete – %s", err)
-        except requests.exceptions.Timeout:
-            err = "Timeout – nSoft serveris neatsakė per 10s"
-            self.sudo().write({'nsoft_error': err})
-            _logger.error("nSoft: %s", err)
+            response.raise_for_status()
+            data = response.json()
+            receipt_id = str(data.get('content', {}).get('receiptId') or
+                            data.get('content', {}).get('id') or
+                            response.status_code)
+            self.write({'nsoft_receipt_id': receipt_id, 'nsoft_error': False})
+            _logger.info("nSoft: Kvitas %s -> receipt_id=%s", self.name, receipt_id)
         except Exception as e:
-            err = str(e)[:200]
-            self.sudo().write({'nsoft_error': err})
-            _logger.error("nSoft: Išimtis – %s", err)
+            _logger.error("nSoft: Klaida siunčiant %s: %s", self.name, e)
+            self.write({'nsoft_error': str(e)[:200]})
