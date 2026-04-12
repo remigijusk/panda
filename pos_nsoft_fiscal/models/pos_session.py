@@ -23,9 +23,19 @@ class PosSession(models.Model):
     def set_cashbox_pos(self, cashbox_value, notes):
         """Called when opening session with initial cash."""
         res = super().set_cashbox_pos(cashbox_value, notes)
-        # Morning opening: send cash-in to nSoft (initial drawer amount)
         if cashbox_value and cashbox_value > 0:
             self._send_nsoft_cash_operation('in', cashbox_value)
+        return res
+
+    def set_opening_control(self, opening_notes, opening_cash):
+        """Odoo 19: Called when opening register with initial cash amount."""
+        res = super().set_opening_control(opening_notes, opening_cash)
+        try:
+            amount = float(opening_cash or 0.0)
+            if amount > 0:
+                self._send_nsoft_cash_operation('in', amount)
+        except Exception as e:
+            _logger.error("nSoft: Klaida siunčiant ryto įdėjimą: %s", e)
         return res
 
     def try_cash_in_out(self, *args, **kwargs):
