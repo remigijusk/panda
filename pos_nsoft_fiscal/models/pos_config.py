@@ -11,6 +11,9 @@ class PosConfig(models.Model):
     nsoft_vat_group_9 = fields.Char(string="PVM grupė 9%", default='E', help="nSoft PVM grupės pavadinimas 9% tarifui (pvz.: E)")
     nsoft_vat_group_0 = fields.Char(string="PVM grupė 0%", default='F', help="nSoft PVM grupės pavadinimas 0% tarifui (pvz.: F)")
     nsoft_token = fields.Char(string="nSoft Token")
+    nsoft_payment_cash = fields.Char(string="nSoft: Grynųjų metodas", default='cash', help="nSoft mokėjimo metodo pavadinimas grynųjų mokėjimams (pvz.: cash arba cashFis)")
+    nsoft_payment_card = fields.Char(string="nSoft: Kortelės metodas", default='card', help="nSoft mokėjimo metodo pavadinimas kortelių mokėjimams (pvz.: card arba cardFis)")
+    nsoft_payment_voucher = fields.Char(string="nSoft: Voucher metodas", default='voucher', help="nSoft mokėjimo metodo pavadinimas kuponų mokėjimams (pvz.: voucher arba voucherFis)")
     # nSoft PVM grupių pavadinimai (priklauso nuo kasėjo konfigūracijos)
     nsoft_vat_group_21 = fields.Char(
         string="PVM grupė 21%",
