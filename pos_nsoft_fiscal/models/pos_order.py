@@ -48,22 +48,18 @@ class PosOrder(models.Model):
                 unit_incl = round(line_incl / qty, 2) if qty else line_incl
                 name = f"{name} ({qty} x {unit_incl} EUR)"
 
-            # nSoft: vatGroup tells which tax rate to apply
-            # Tax groups: A/B/C = 21%, E = 9%, F = 0%
-            # Get vatGroup from config or default to 'A' (21%)
-            tax_rate = 21
-            vat_group = getattr(config, 'nsoft_vat_group_21', None) or 'A'
+            # vatGroup from config (A=21%, E=9%, F=0%)
+            vat_group = 'A'
             if line.tax_ids:
                 rate = int(round(float(line.tax_ids[0].amount)))
                 if rate == 21:
-                    vat_group = getattr(config, 'nsoft_vat_group_21', None) or 'A'
+                    vat_group = getattr(config, 'nsoft_vat_group_21', 'A') or 'A'
                 elif rate == 9:
-                    vat_group = getattr(config, 'nsoft_vat_group_9', None) or 'E'
+                    vat_group = getattr(config, 'nsoft_vat_group_9', 'E') or 'E'
                 elif rate == 0:
-                    vat_group = getattr(config, 'nsoft_vat_group_0', None) or 'F'
-                tax_rate = rate
+                    vat_group = getattr(config, 'nsoft_vat_group_0', 'F') or 'F'
 
-            # unitPrice must equal lineAmount/qty for nSoft validation
+            # unitPrice * qty must equal lineAmount for nSoft validation
             unit_price = round(line_incl / qty, 4) if qty else line_incl
 
             items_list.append({
@@ -74,29 +70,31 @@ class PosOrder(models.Model):
                 'vatGroup': vat_group,
             })
 
-        # Fix rounding: ensure sum of lineAmounts == total
+        # Fix rounding
         total_incl = round(abs(self.amount_total), 2)
         sum_lines = round(sum(i['lineAmount'] for i in items_list), 2)
         diff = round(total_incl - sum_lines, 2)
         if abs(diff) > 0.001 and items_list:
             items_list[-1]['lineAmount'] = round(items_list[-1]['lineAmount'] + diff, 2)
-            items_list[-1]['unitPrice'] = round(items_list[-1]['lineAmount'] / items_list[-1]['quantity'], 4)
+            items_list[-1]['unitPrice'] = round(
+                items_list[-1]['lineAmount'] / items_list[-1]['quantity'], 4
+            )
 
-        # Payment methods
+        # Payment methods: cash/card/voucher (without Fis suffix for DEMO compatibility)
         payments = []
         for payment in self.payment_ids:
             method_name = (payment.payment_method_id.name or '').lower()
             amt = round(abs(payment.amount), 2)
             if any(k in method_name for k in ('card', 'kortel', 'bank', 'banko', 'visa', 'master')):
-                nsoft_method = 'cardFis'
+                nsoft_method = 'card'
             elif any(k in method_name for k in ('voucher', 'kupon', 'dovanu', 'wolt')):
-                nsoft_method = 'voucherFis'
+                nsoft_method = 'voucher'
             else:
-                nsoft_method = 'cashFis'
+                nsoft_method = 'cash'
             payments.append({'method': nsoft_method, 'amount': amt})
 
         if not payments:
-            payments = [{'method': 'cashFis', 'amount': total_incl}]
+            payments = [{'method': 'cash', 'amount': total_incl}]
 
         endpoint = '/return' if is_refund else '/receipt'
         payload = {
