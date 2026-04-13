@@ -29,42 +29,41 @@ class PosOrder(models.Model):
     def _get_nsoft_payment_method(self, payment):
         """Map Odoo payment method to nSoft method string using config fields."""
         config = self.config_id
-        method_id = payment.payment_method_id.id if payment.payment_method_id else None
         name = (payment.payment_method_id.name or '').lower().strip()
 
-        # Try to match by known payment method IDs first (Odoo config)
-        # id=1 Grynieji -> cash, id=2 Kortele -> card, id=4 Wolt -> voucher
         cash_val = (config.nsoft_payment_cash or 'cash').strip()
         card_val = (config.nsoft_payment_card or 'card').strip()
         voucher_val = (config.nsoft_payment_voucher or 'voucher').strip()
 
-        # Match by name keywords
         if any(k in name for k in ('card', 'kortel', 'bank', 'banko', 'visa', 'master', 'mokejimo')):
             return card_val
         if any(k in name for k in ('voucher', 'kupon', 'dovanu', 'wolt', 'bolt')):
             return voucher_val
-        # Default -> cash
         return cash_val
 
     def _get_nsoft_vat_group(self, line, config):
-        """Get nSoft VAT group code for a order line."""
+        """Get nSoft VAT group code for an order line.
+        Returns None if no VAT group configured (DEMO kasėjas gali netureti PVM grupiu).
+        """
         try:
             if not line.tax_ids:
-                return getattr(config, 'nsoft_vat_group_21', 'A') or 'A'
+                # Jei produktas be PVM - naudojame 0% grupę jei sukonfigūruota
+                val = getattr(config, 'nsoft_vat_group_0', None)
+                return val.strip() if val and val.strip() else None
             rate = int(round(float(line.tax_ids[0].amount)))
             if rate == 21:
-                return getattr(config, 'nsoft_vat_group_21', 'A') or 'A'
+                val = getattr(config, 'nsoft_vat_group_21', None)
             elif rate == 9:
-                return getattr(config, 'nsoft_vat_group_9', 'E') or 'E'
+                val = getattr(config, 'nsoft_vat_group_9', None)
             elif rate == 0:
-                return getattr(config, 'nsoft_vat_group_0', 'F') or 'F'
+                val = getattr(config, 'nsoft_vat_group_0', None)
             else:
-                # Unknown rate – fallback to 21% group
-                _logger.warning("nSoft: Nezinomas PVM tarifas %s%%, naudojamas 'A'", rate)
-                return getattr(config, 'nsoft_vat_group_21', 'A') or 'A'
+                _logger.warning("nSoft: Nezinomas PVM tarifas %s%%, bandome nsoft_vat_group_21", rate)
+                val = getattr(config, 'nsoft_vat_group_21', None)
+            return val.strip() if val and val.strip() else None
         except Exception as e:
-            _logger.warning("nSoft: PVM grupes klaida: %s, naudojamas 'A'", e)
-            return 'A'
+            _logger.warning("nSoft: PVM grupes klaida: %s", e)
+            return None
 
     def _send_to_nsoft(self):
         self.ensure_one()
@@ -92,13 +91,18 @@ class PosOrder(models.Model):
             vat_group = self._get_nsoft_vat_group(line, config)
             unit_price = round(line_incl / qty, 4) if qty else line_incl
 
-            items_list.append({
+            item = {
                 'description': name[:50],
                 'quantity': qty,
                 'unitPrice': unit_price,
                 'lineAmount': line_incl,
-                'vatGroup': vat_group,
-            })
+            }
+            # Pridedame vatGroup TIK jei yra sukonfigūruota
+            # (DEMO kasėjas gali netureti PVM grupių)
+            if vat_group:
+                item['vatGroup'] = vat_group
+
+            items_list.append(item)
 
         # Fix rounding
         total_incl = round(abs(self.amount_total), 2)
