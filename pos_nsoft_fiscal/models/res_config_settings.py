@@ -12,14 +12,22 @@ class ResConfigSettings(models.TransientModel):
     pos_nsoft_pos_id = fields.Char(related='pos_config_id.nsoft_pos_id', readonly=False)
     pos_nsoft_token = fields.Char(related='pos_config_id.nsoft_token', readonly=False)
 
+    # Mokėjimo metodai
+    pos_nsoft_payment_cash = fields.Char(related='pos_config_id.nsoft_payment_cash', readonly=False)
+    pos_nsoft_payment_card = fields.Char(related='pos_config_id.nsoft_payment_card', readonly=False)
+    pos_nsoft_payment_voucher = fields.Char(related='pos_config_id.nsoft_payment_voucher', readonly=False)
+
+    # PVM grupės
+    pos_nsoft_vat_group_21 = fields.Char(related='pos_config_id.nsoft_vat_group_21', readonly=False)
+    pos_nsoft_vat_group_9 = fields.Char(related='pos_config_id.nsoft_vat_group_9', readonly=False)
+    pos_nsoft_vat_group_0 = fields.Char(related='pos_config_id.nsoft_vat_group_0', readonly=False)
+
     def action_test_nsoft_connection(self):
         self.ensure_one()
         if not self.pos_nsoft_enabled:
             raise UserError("Pirmiausia ijunkite nSoft fiskalizacija.")
-
         if not self.pos_nsoft_api_url or not self.pos_nsoft_pos_id or not self.pos_nsoft_token:
             raise UserError("Uzpildykite visus laukus (API URL, POS ID, Token)!")
-
         url = f"{self.pos_nsoft_api_url.rstrip('/')}/cr/{self.pos_nsoft_pos_id}/cur-day"
         headers = {
             "accept": "application/json",
@@ -27,7 +35,6 @@ class ResConfigSettings(models.TransientModel):
             "Content-Type": "application/json",
         }
         payload = {"output": {"format": "native", "lineWidth": 80}}
-
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=10)
             if response.status_code in [200, 201]:
