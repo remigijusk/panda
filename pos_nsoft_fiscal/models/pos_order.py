@@ -26,6 +26,22 @@ class PosOrder(models.Model):
             _logger.error("nSoft: Nepavyko isssiusti uzsakymo %s: %s", order_id, e)
         return order_id
 
+    def _get_nsoft_vat_group(self, tax_rate):
+        """Map Odoo tax rate to nSoft VAT group letter.
+        nSoft VAT group mapping depends on CR device configuration.
+        Default: A=21%, E=9%, F=0%
+        Override nsoft_vat_group_21/9/0 in pos.config if needed."""
+        config = self.config_id
+        rate = int(round(float(tax_rate)))
+        if rate == 21:
+            return getattr(config, 'nsoft_vat_group_21', None) or 'A'
+        elif rate == 9:
+            return getattr(config, 'nsoft_vat_group_9', None) or 'E'
+        elif rate == 0:
+            return getattr(config, 'nsoft_vat_group_0', None) or 'F'
+        else:
+            return 'A'
+
     def _send_to_nsoft(self):
         self.ensure_one()
         config = self.config_id
@@ -39,54 +55,42 @@ class PosOrder(models.Model):
 
         is_refund = self.amount_total < 0
         items_list = []
-        total_payment = round(abs(self.amount_total), 2)
 
         for line in self.lines:
             qty = abs(line.qty)
+            # Use incl VAT prices (price_subtotal_incl)
             line_incl = round(abs(line.price_subtotal_incl), 2)
+            unit_incl = round(line_incl / qty, 4) if qty else line_incl
+            unit_incl_2 = round(unit_incl, 2)
 
             name = line.full_product_name or line.product_id.display_name or "Preke"
             if round(qty, 3) != 1.0 and round(qty, 3) != 0.0:
-                unit_price_incl = round(line_incl / qty, 4) if qty else line_incl
-                name = f"{name} ({round(qty, 3)} x {round(unit_price_incl, 2)} EUR)"
+                name = f"{name} ({round(qty, 3)} x {unit_incl_2} EUR)"
 
-            # nSoft: unitPrice = price per unit EXCL VAT
-            #        lineAmount = qty * unitPrice EXCL VAT
-            #        taxes.base = lineAmount (excl VAT)
-            #        taxes.amount = VAT amount
-            # Tax group names: A=21%, B=9%, C=5%, D=0%
+            # Determine VAT group
             tax_rate = 21
-            nsoft_tax_group = 'A'
             if line.tax_ids:
                 tax = line.tax_ids[0]
                 tax_rate = int(round(float(tax.amount)))
-                nsoft_tax_group = {21: 'A', 9: 'B', 5: 'C', 0: 'D'}.get(tax_rate, 'A')
-
-            divisor = 1 + tax_rate / 100.0
-            line_excl = round(line_incl / divisor, 4)
-            tax_amount = round(line_incl - line_excl, 4)
-            unit_price_excl = round(line_excl / qty, 4) if qty else line_excl
-
-            # Round to 2 decimal places for final values
-            line_excl_2 = round(line_excl, 2)
-            tax_amount_2 = round(tax_amount, 2)
-            unit_price_excl_2 = round(unit_price_excl, 2)
+            vat_group = self._get_nsoft_vat_group(tax_rate)
 
             items_list.append({
                 'description': name[:50],
                 'quantity': round(qty, 3),
-                'unitPrice': unit_price_excl_2,
-                'lineAmount': line_excl_2,
-                'taxes': [{
-                    'name': nsoft_tax_group,
-                    'rate': tax_rate,
-                    'amount': tax_amount_2,
-                    'base': line_excl_2,
-                }],
+                'unitPrice': unit_incl_2,
+                'lineAmount': line_incl,
+                'vatGroup': vat_group,
             })
 
-        # Payment method mapping - cashFis for cash, cardFis for card
-        # nSoft DEMO CR-000019280 supports: cash (and cashFis for fiscal)
+        # Fix rounding – ensure sum of lineAmounts == total
+        abs_total = round(abs(self.amount_total), 2)
+        sum_lines = round(sum(i['lineAmount'] for i in items_list), 2)
+        diff = round(abs_total - sum_lines, 2)
+        if abs(diff) > 0.001 and items_list:
+            items_list[-1]['lineAmount'] = round(items_list[-1]['lineAmount'] + diff, 2)
+            items_list[-1]['unitPrice'] = round(items_list[-1]['lineAmount'] / items_list[-1]['quantity'], 4)
+
+        # Payment methods
         payments = []
         for payment in self.payment_ids:
             method_name = (payment.payment_method_id.name or '').lower()
@@ -100,14 +104,11 @@ class PosOrder(models.Model):
             payments.append({'method': nsoft_method, 'amount': amt})
 
         if not payments:
-            payments = [{'method': 'cashFis', 'amount': total_payment}]
+            payments = [{'method': 'cashFis', 'amount': abs_total}]
 
-        if is_refund:
-            payload = {'returns': items_list, 'payments': payments}
-            endpoint = '/return'
-        else:
-            payload = {'sales': items_list, 'payments': payments}
-            endpoint = '/receipt'
+        endpoint = '/return' if is_refund else '/receipt'
+        key = 'returns' if is_refund else 'sales'
+        payload = {key: items_list, 'payments': payments}
 
         url = f"{api_url.rstrip('/')}/cr/{pos_id}{endpoint}"
         headers = {
@@ -115,16 +116,16 @@ class PosOrder(models.Model):
             'Authorization': f'Bearer {token}',
             'Content-Type': 'application/json',
         }
-        _logger.info("nSoft payload for %s: %s", self.name, str(payload)[:300])
+        _logger.info("nSoft sending %s: %s", self.name, str(payload)[:400])
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=10)
             if not response.ok:
-                err_msg = ''
+                err_msg = response.text[:200]
                 try:
-                    err_msg = response.json().get('message', response.text[:200])
+                    err_msg = response.json().get('message', err_msg)
                 except Exception:
-                    err_msg = response.text[:200]
-                _logger.error("nSoft atmetė %s: %s | payload: %s", self.name, err_msg, str(payload)[:300])
+                    pass
+                _logger.error("nSoft atmetė %s (%s): %s", self.name, response.status_code, err_msg)
                 raise UserError(f"i.EKA klaida ({response.status_code}): {err_msg}")
             data = response.json()
             receipt_id = str(
