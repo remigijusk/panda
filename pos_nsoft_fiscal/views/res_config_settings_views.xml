@@ -24,7 +24,7 @@
             </div>
 
             <div class="row mt16">
-              <label class="col-lg-3 o_light_label" string="— Mokėjimo metodai —"/>
+              <span class="col-lg-12 o_form_label"><strong>Mokėjimo metodai</strong></span>
             </div>
             <div class="row mt8">
               <label for="pos_nsoft_payment_cash" class="col-lg-3 o_light_label" string="Grynųjų metodas"/>
@@ -40,7 +40,7 @@
             </div>
 
             <div class="row mt16">
-              <label class="col-lg-3 o_light_label" string="— PVM grupės —"/>
+              <span class="col-lg-12 o_form_label"><strong>PVM grupės</strong></span>
             </div>
             <div class="row mt8">
               <label for="pos_nsoft_vat_group_21" class="col-lg-3 o_light_label" string="PVM grupė 21%"/>
