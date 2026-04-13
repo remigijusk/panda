@@ -44,8 +44,11 @@ class PosOrder(models.Model):
             return voucher_val
         return cash_val
 
-    def _get_nsoft_vat_group(self, line, config):
-        """Get nSoft VAT group for order line. Always returns a value."""
+    def _get_nsoft_vat_code(self, line, config):
+        """Get nSoft vatCode for order line.
+        nSoft API uses 'vatCode' field (NOT 'vatGroup').
+        Always returns a value - fallback to A/E/F.
+        """
         try:
             if not line.tax_ids:
                 val = (getattr(config, 'nsoft_vat_group_0', '') or '').strip()
@@ -65,7 +68,7 @@ class PosOrder(models.Model):
                 val = (getattr(config, 'nsoft_vat_group_21', '') or '').strip()
                 return val or 'A'
         except Exception as e:
-            _logger.warning("nSoft: PVM grupės klaida: %s, naudojamas 'A'", e)
+            _logger.warning("nSoft: vatCode klaida: %s, naudojamas 'A'", e)
             return 'A'
 
     def _send_to_nsoft(self):
@@ -91,7 +94,8 @@ class PosOrder(models.Model):
                 unit_incl = round(line_incl / qty, 2) if qty else line_incl
                 name = f"{name} ({qty} x {unit_incl} EUR)"
 
-            vat_group = self._get_nsoft_vat_group(line, config)
+            # SVARBU: nSoft API naudoja 'vatCode' (ne 'vatGroup'!)
+            vat_code = self._get_nsoft_vat_code(line, config)
             unit_price = round(line_incl / qty, 4) if qty else line_incl
 
             items_list.append({
@@ -99,7 +103,7 @@ class PosOrder(models.Model):
                 'quantity': qty,
                 'unitPrice': unit_price,
                 'lineAmount': line_incl,
-                'vatGroup': vat_group,
+                'vatCode': vat_code,
             })
 
         # Fix rounding
