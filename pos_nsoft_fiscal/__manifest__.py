@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'nSoft Virtual Fiscalization for POS',
-    'version': '19.0.1.89.0',
+    'version': '19.0.1.90.0',
     'category': 'Sales/Point of Sale',
     'summary': 'Tiesioginė nVirtualFiscal (i.EKA) integracija per REST API',
     'author': 'Remigijus Kubilius',
@@ -20,6 +20,14 @@
     },
     'license': 'LGPL-3',
 }
+
+
+
+
+
+
+
+
 
 
 
