@@ -1,32 +1,67 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="res_config_settings_view_form_nsoft" model="ir.ui.view">
-        <field name="name">res.config.settings.view.form.inherit.pos.nsoft</field>
-        <field name="model">res.config.settings</field>
-        <field name="inherit_id" ref="point_of_sale.res_config_settings_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//block[@id='pos_interface_section']" position="inside">
-                <setting id="nsoft_fiscalization" string="nSoft Virtuali Fiskalizacija" help="Tiesioginė i.EKA integracija per nSoft API">
-                    <field name="pos_nsoft_enabled"/>
-                    <div class="content-group" invisible="not pos_nsoft_enabled">
-                        <div class="row mt16">
-                            <label for="pos_nsoft_api_url" class="col-lg-3 o_light_label" string="API URL"/>
-                            <field name="pos_nsoft_api_url"/>
-                        </div>
-                        <div class="row mt16">
-                            <label for="pos_nsoft_pos_id" class="col-lg-3 o_light_label" string="POS ID"/>
-                            <field name="pos_nsoft_pos_id"/>
-                        </div>
-                        <div class="row mt16">
-                            <label for="pos_nsoft_token" class="col-lg-3 o_light_label" string="Token (Slaptažodis)"/>
-                            <field name="pos_nsoft_token"/>
-                        </div>
-                        <div class="row mt16">
-                            <button name="action_test_nsoft_connection" type="object" string="Testuoti Ryšį" class="btn btn-primary" icon="fa-wifi"/>
-                        </div>
-                    </div>
-                </setting>
-            </xpath>
-        </field>
-    </record>
+  <record id="res_config_settings_view_form_nsoft" model="ir.ui.view">
+    <field name="name">res.config.settings.view.form.inherit.pos.nsoft</field>
+    <field name="model">res.config.settings</field>
+    <field name="inherit_id" ref="point_of_sale.res_config_settings_view_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//block[@id='pos_interface_section']" position="inside">
+        <setting id="nsoft_fiscalization" string="nSoft Virtuali Fiskalizacija" help="Tiesioginė i.EKA integracija per nSoft API">
+          <field name="pos_nsoft_enabled"/>
+          <div class="content-group" invisible="not pos_nsoft_enabled">
+
+            <div class="row mt16">
+              <label for="pos_nsoft_api_url" class="col-lg-3 o_light_label" string="API URL"/>
+              <field name="pos_nsoft_api_url"/>
+            </div>
+            <div class="row mt16">
+              <label for="pos_nsoft_pos_id" class="col-lg-3 o_light_label" string="POS ID"/>
+              <field name="pos_nsoft_pos_id"/>
+            </div>
+            <div class="row mt16">
+              <label for="pos_nsoft_token" class="col-lg-3 o_light_label" string="Token (Slaptažodis)"/>
+              <field name="pos_nsoft_token"/>
+            </div>
+
+            <div class="row mt16">
+              <label class="col-lg-3 o_light_label" string="— Mokėjimo metodai —"/>
+            </div>
+            <div class="row mt8">
+              <label for="pos_nsoft_payment_cash" class="col-lg-3 o_light_label" string="Grynųjų metodas"/>
+              <field name="pos_nsoft_payment_cash" placeholder="cash"/>
+            </div>
+            <div class="row mt8">
+              <label for="pos_nsoft_payment_card" class="col-lg-3 o_light_label" string="Kortelės metodas"/>
+              <field name="pos_nsoft_payment_card" placeholder="card"/>
+            </div>
+            <div class="row mt8">
+              <label for="pos_nsoft_payment_voucher" class="col-lg-3 o_light_label" string="Voucher metodas"/>
+              <field name="pos_nsoft_payment_voucher" placeholder="voucher"/>
+            </div>
+
+            <div class="row mt16">
+              <label class="col-lg-3 o_light_label" string="— PVM grupės —"/>
+            </div>
+            <div class="row mt8">
+              <label for="pos_nsoft_vat_group_21" class="col-lg-3 o_light_label" string="PVM grupė 21%"/>
+              <field name="pos_nsoft_vat_group_21" placeholder="A"/>
+            </div>
+            <div class="row mt8">
+              <label for="pos_nsoft_vat_group_9" class="col-lg-3 o_light_label" string="PVM grupė 9%"/>
+              <field name="pos_nsoft_vat_group_9" placeholder="E"/>
+            </div>
+            <div class="row mt8">
+              <label for="pos_nsoft_vat_group_0" class="col-lg-3 o_light_label" string="PVM grupė 0%"/>
+              <field name="pos_nsoft_vat_group_0" placeholder="F"/>
+            </div>
+
+            <div class="row mt16">
+              <button name="action_test_nsoft_connection" type="object" string="Testuoti Ryšį" class="btn btn-primary" icon="fa-wifi"/>
+            </div>
+
+          </div>
+        </setting>
+      </xpath>
+    </field>
+  </record>
 </odoo>
