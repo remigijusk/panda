@@ -16,9 +16,7 @@ class PosSession(models.Model):
         return result
 
     def set_opening_control(self, opening_notes, opening_cash):
-        """Odoo 19: opening_control -> opened.
-        Siunciam cash-in i nSoft jei balance > 0."""
-        # Konvertuojam i float pries super() kad isvengtum TypeError
+        """Odoo 19: opening_control -> opened. Siunciam cash-in i nSoft jei balance > 0."""
         try:
             cash_float = float(opening_cash or 0.0)
         except (TypeError, ValueError):
@@ -26,22 +24,22 @@ class PosSession(models.Model):
 
         res = super().set_opening_control(opening_notes, cash_float)
 
-        # Po sekmingo atidarymo – siunciam cash-in i nSoft
         try:
             if cash_float > 0:
                 for session in self:
                     if session.config_id.nsoft_enabled:
                         self._send_nsoft_cash_operation('in', cash_float)
-                        _logger.info("nSoft: Ryto atidarymas cash-in %.2f (%s)",
-                                     cash_float, session.name)
+                        _logger.info("nSoft: Ryto atidarymas cash-in %.2f (%s)", cash_float, session.name)
         except Exception as e:
             _logger.error("nSoft: Ryto atidarymo klaida: %s", e)
 
         return res
 
     def action_pos_session_closing_control(self, *args, **kwargs):
-        res = super().action_pos_session_closing_control(*args, **kwargs)
+        """Uzdarant sesija – pirma siunciame Z ataskaita i nSoft, tada uzdarome."""
+        # Siunčiame Z ataskaitą PRIEŠ uždarant – kad gaukume atsakymą
         self._send_nsoft_z_report()
+        res = super().action_pos_session_closing_control(*args, **kwargs)
         return res
 
     def try_cash_in_out(self, *args, **kwargs):
@@ -75,6 +73,24 @@ class PosSession(models.Model):
             "Content-Type": "application/json",
         }
 
+    def _parse_nsoft_lines(self, data):
+        """Ištraukia teksto eilutes iš nSoft atsakymo."""
+        lines = []
+        try:
+            content = data if isinstance(data, list) else (data.get('content') or [])
+            if isinstance(content, dict):
+                content = [content]
+            for item in content:
+                if isinstance(item, dict):
+                    doc = item.get('document') or {}
+                    for line in (doc.get('lines') or []):
+                        txt = line.get('content', '')
+                        if txt:
+                            lines.append(txt)
+        except Exception as e:
+            _logger.warning("nSoft: Klaida apdorojant eilutes: %s", e)
+        return lines
+
     def print_nsoft_x_report(self):
         for session in self:
             if not session.config_id.nsoft_enabled:
@@ -89,13 +105,7 @@ class PosSession(models.Model):
                 response = requests.post(url, json=payload, headers=headers, timeout=10)
                 response.raise_for_status()
                 data = response.json()
-                lines = []
-                for item in (data.get('content') or []):
-                    doc = item.get('document') or {}
-                    for line in (doc.get('lines') or []):
-                        txt = line.get('content', '')
-                        if txt:
-                            lines.append(txt)
+                lines = self._parse_nsoft_lines(data)
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
@@ -119,6 +129,7 @@ class PosSession(models.Model):
                 }
 
     def _send_nsoft_z_report(self):
+        """Siunčia Z ataskaitą į nSoft ir loguoja atsakymą."""
         for session in self:
             if not session.config_id.nsoft_enabled:
                 continue
@@ -130,8 +141,18 @@ class PosSession(models.Model):
             payload = {"output": {"format": "native", "lineWidth": 80}}
             try:
                 response = requests.post(url, json=payload, headers=headers, timeout=15)
-                _logger.info("nSoft Z ataskaita: %s -> %s",
-                             session.name, response.status_code)
+                if response.ok:
+                    data = response.json()
+                    lines = self._parse_nsoft_lines(data)
+                    _logger.info(
+                        "nSoft Z ataskaita %s: OK, %d eilučių",
+                        session.name, len(lines)
+                    )
+                else:
+                    _logger.error(
+                        "nSoft Z ataskaita %s: Klaida %s – %s",
+                        session.name, response.status_code, response.text[:200]
+                    )
             except Exception as e:
                 _logger.error("nSoft Z-Ataskaitos klaida: %s", e)
 
