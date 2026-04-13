@@ -27,15 +27,44 @@ class PosOrder(models.Model):
         return order_id
 
     def _get_nsoft_payment_method(self, payment):
-        """Map Odoo payment method name to nSoft method string."""
-        name = (payment.payment_method_id.name or '').lower()
+        """Map Odoo payment method to nSoft method string using config fields."""
         config = self.config_id
-        # Check if config has custom mapping fields, otherwise use defaults
-        if any(k in name for k in ('card', 'kortel', 'bank', 'banko', 'visa', 'master')):
-            return getattr(config, 'nsoft_payment_card', None) or 'card'
-        if any(k in name for k in ('voucher', 'kupon', 'dovanu', 'wolt')):
-            return getattr(config, 'nsoft_payment_voucher', None) or 'voucher'
-        return getattr(config, 'nsoft_payment_cash', None) or 'cash'
+        method_id = payment.payment_method_id.id if payment.payment_method_id else None
+        name = (payment.payment_method_id.name or '').lower().strip()
+
+        # Try to match by known payment method IDs first (Odoo config)
+        # id=1 Grynieji -> cash, id=2 Kortele -> card, id=4 Wolt -> voucher
+        cash_val = (config.nsoft_payment_cash or 'cash').strip()
+        card_val = (config.nsoft_payment_card or 'card').strip()
+        voucher_val = (config.nsoft_payment_voucher or 'voucher').strip()
+
+        # Match by name keywords
+        if any(k in name for k in ('card', 'kortel', 'bank', 'banko', 'visa', 'master', 'mokejimo')):
+            return card_val
+        if any(k in name for k in ('voucher', 'kupon', 'dovanu', 'wolt', 'bolt')):
+            return voucher_val
+        # Default -> cash
+        return cash_val
+
+    def _get_nsoft_vat_group(self, line, config):
+        """Get nSoft VAT group code for a order line."""
+        try:
+            if not line.tax_ids:
+                return getattr(config, 'nsoft_vat_group_21', 'A') or 'A'
+            rate = int(round(float(line.tax_ids[0].amount)))
+            if rate == 21:
+                return getattr(config, 'nsoft_vat_group_21', 'A') or 'A'
+            elif rate == 9:
+                return getattr(config, 'nsoft_vat_group_9', 'E') or 'E'
+            elif rate == 0:
+                return getattr(config, 'nsoft_vat_group_0', 'F') or 'F'
+            else:
+                # Unknown rate – fallback to 21% group
+                _logger.warning("nSoft: Nezinomas PVM tarifas %s%%, naudojamas 'A'", rate)
+                return getattr(config, 'nsoft_vat_group_21', 'A') or 'A'
+        except Exception as e:
+            _logger.warning("nSoft: PVM grupes klaida: %s, naudojamas 'A'", e)
+            return 'A'
 
     def _send_to_nsoft(self):
         self.ensure_one()
@@ -49,28 +78,20 @@ class PosOrder(models.Model):
             return
 
         is_refund = self.amount_total < 0
-        items_list = []
 
+        items_list = []
         for line in self.lines:
             qty = round(abs(line.qty), 3)
             line_incl = round(abs(line.price_subtotal_incl), 2)
             name = line.full_product_name or line.product_id.display_name or "Preke"
+
             if qty != 1.0 and qty != 0.0:
                 unit_incl = round(line_incl / qty, 2) if qty else line_incl
                 name = f"{name} ({qty} x {unit_incl} EUR)"
 
-            # vatGroup from config
-            vat_group = 'A'
-            if line.tax_ids:
-                rate = int(round(float(line.tax_ids[0].amount)))
-                if rate == 21:
-                    vat_group = getattr(config, 'nsoft_vat_group_21', 'A') or 'A'
-                elif rate == 9:
-                    vat_group = getattr(config, 'nsoft_vat_group_9', 'E') or 'E'
-                elif rate == 0:
-                    vat_group = getattr(config, 'nsoft_vat_group_0', 'F') or 'F'
-
+            vat_group = self._get_nsoft_vat_group(line, config)
             unit_price = round(line_incl / qty, 4) if qty else line_incl
+
             items_list.append({
                 'description': name[:50],
                 'quantity': qty,
@@ -96,7 +117,7 @@ class PosOrder(models.Model):
                 'amount': round(abs(payment.amount), 2),
             })
         if not payments:
-            payments = [{'method': 'cash', 'amount': total_incl}]
+            payments = [{'method': config.nsoft_payment_cash or 'cash', 'amount': total_incl}]
 
         endpoint = '/return' if is_refund else '/receipt'
         payload = {
@@ -110,7 +131,9 @@ class PosOrder(models.Model):
             'Authorization': f'Bearer {token}',
             'Content-Type': 'application/json',
         }
+
         _logger.info("nSoft %s payload: %s", self.name, str(payload)[:400])
+
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=10)
             if not response.ok:
@@ -120,14 +143,16 @@ class PosOrder(models.Model):
                     err_msg = response.text[:200]
                 _logger.error("nSoft atmetė %s: %s", self.name, err_msg)
                 raise UserError(f"i.EKA klaida ({response.status_code}): {err_msg}")
+
             data = response.json()
             receipt_id = str(
-                data.get('content', {}).get('receiptId') or
-                data.get('content', {}).get('id') or
-                response.status_code
+                data.get('content', {}).get('receiptId')
+                or data.get('content', {}).get('id')
+                or response.status_code
             )
             self.write({'nsoft_receipt_id': receipt_id, 'nsoft_error': False})
             _logger.info("nSoft: Kvitas %s -> id=%s", self.name, receipt_id)
+
         except UserError:
             raise
         except requests.Timeout:
