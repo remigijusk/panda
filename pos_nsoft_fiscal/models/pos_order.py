@@ -21,7 +21,6 @@ class PosOrder(models.Model):
             if pos_order and pos_order.config_id.nsoft_enabled:
                 pos_order._send_to_nsoft()
         except Exception as e:
-            # Loguojame klaidą bet NERODEAME vartotojui – pardavimas Odoo visada išsaugomas
             _logger.error("nSoft: Klaida siunčiant užsakymą %s: %s", order_id, e)
             try:
                 self.browse(order_id).write({'nsoft_error': str(e)[:200]})
@@ -30,14 +29,11 @@ class PosOrder(models.Model):
         return order_id
 
     def _get_nsoft_payment_method(self, payment):
-        """Map Odoo payment method to nSoft method string using config fields."""
         config = self.config_id
         name = (payment.payment_method_id.name or '').lower().strip()
-
         cash_val = (config.nsoft_payment_cash or 'cash').strip()
         card_val = (config.nsoft_payment_card or 'card').strip()
         voucher_val = (config.nsoft_payment_voucher or 'voucher').strip()
-
         if any(k in name for k in ('card', 'kortel', 'bank', 'banko', 'visa', 'master')):
             return card_val
         if any(k in name for k in ('voucher', 'kupon', 'dovanu', 'wolt', 'bolt')):
@@ -45,30 +41,21 @@ class PosOrder(models.Model):
         return cash_val
 
     def _get_nsoft_vat_code(self, line, config):
-        """Get nSoft vatCode for order line.
-        nSoft API uses 'vatCode' field (NOT 'vatGroup').
-        Always returns a value - fallback to A/E/F.
-        """
+        """nSoft API uses 'vatCode'. Always returns value."""
         try:
             if not line.tax_ids:
-                val = (getattr(config, 'nsoft_vat_group_0', '') or '').strip()
-                return val or 'F'
-
+                return (getattr(config, 'nsoft_vat_group_0', '') or '').strip() or 'F'
             rate = int(round(float(line.tax_ids[0].amount)))
             if rate == 21:
-                val = (getattr(config, 'nsoft_vat_group_21', '') or '').strip()
-                return val or 'A'
+                return (getattr(config, 'nsoft_vat_group_21', '') or '').strip() or 'A'
             elif rate == 9:
-                val = (getattr(config, 'nsoft_vat_group_9', '') or '').strip()
-                return val or 'E'
+                return (getattr(config, 'nsoft_vat_group_9', '') or '').strip() or 'E'
             elif rate == 0:
-                val = (getattr(config, 'nsoft_vat_group_0', '') or '').strip()
-                return val or 'F'
+                return (getattr(config, 'nsoft_vat_group_0', '') or '').strip() or 'F'
             else:
-                val = (getattr(config, 'nsoft_vat_group_21', '') or '').strip()
-                return val or 'A'
+                return (getattr(config, 'nsoft_vat_group_21', '') or '').strip() or 'A'
         except Exception as e:
-            _logger.warning("nSoft: vatCode klaida: %s, naudojamas 'A'", e)
+            _logger.warning("nSoft vatCode klaida: %s", e)
             return 'A'
 
     def _send_to_nsoft(self):
@@ -79,7 +66,7 @@ class PosOrder(models.Model):
         token = config.nsoft_token
 
         if not api_url or not pos_id or not token:
-            _logger.warning("nSoft: Trūksta nustatymų – praleidžiama.")
+            _logger.warning("nSoft: Trūksta nustatymų.")
             return
 
         is_refund = self.amount_total < 0
@@ -88,22 +75,17 @@ class PosOrder(models.Model):
         for line in self.lines:
             qty = round(abs(line.qty), 3)
             line_incl = round(abs(line.price_subtotal_incl), 2)
-            name = line.full_product_name or line.product_id.display_name or "Prekė"
-
+            name = (line.full_product_name or line.product_id.display_name or 'Prekė')[:50]
             if qty not in (1.0, 0.0):
                 unit_incl = round(line_incl / qty, 2) if qty else line_incl
-                name = f"{name} ({qty} x {unit_incl} EUR)"
-
-            # SVARBU: nSoft API naudoja 'vatCode' (ne 'vatGroup'!)
-            vat_code = self._get_nsoft_vat_code(line, config)
+                name = f"{name} ({qty} x {unit_incl} EUR)"[:50]
             unit_price = round(line_incl / qty, 4) if qty else line_incl
-
             items_list.append({
-                'description': name[:50],
+                'description': name,
                 'quantity': qty,
                 'unitPrice': unit_price,
                 'lineAmount': line_incl,
-                'vatCode': vat_code,
+                'vatCode': self._get_nsoft_vat_code(line, config),
             })
 
         # Fix rounding
@@ -116,7 +98,6 @@ class PosOrder(models.Model):
                 items_list[-1]['unitPrice'] = round(
                     items_list[-1]['lineAmount'] / items_list[-1]['quantity'], 4)
 
-        # Payments
         payments = []
         for payment in self.payment_ids:
             payments.append({
@@ -127,11 +108,7 @@ class PosOrder(models.Model):
             payments = [{'method': config.nsoft_payment_cash or 'cash', 'amount': total_incl}]
 
         endpoint = '/return' if is_refund else '/receipt'
-        payload = {
-            ('returns' if is_refund else 'sales'): items_list,
-            'payments': payments,
-        }
-
+        payload = {('returns' if is_refund else 'sales'): items_list, 'payments': payments}
         url = f"{api_url.rstrip('/')}/cr/{pos_id}{endpoint}"
         headers = {
             'accept': 'application/json',
@@ -139,8 +116,7 @@ class PosOrder(models.Model):
             'Content-Type': 'application/json',
         }
 
-        _logger.info("nSoft siunčiama %s: %s", self.name, str(payload)[:500])
-
+        _logger.info("nSoft %s: %s", self.name, str(payload)[:500])
         response = requests.post(url, json=payload, headers=headers, timeout=10)
 
         if not response.ok:
@@ -148,14 +124,29 @@ class PosOrder(models.Model):
                 err_msg = response.json().get('message', response.text[:300])
             except Exception:
                 err_msg = response.text[:300]
-            _logger.error("nSoft atmetė %s (%s): %s", self.name, response.status_code, err_msg)
             raise Exception(f"nSoft {response.status_code}: {err_msg}")
 
-        data = response.json()
-        receipt_id = str(
-            data.get('content', {}).get('receiptId')
-            or data.get('content', {}).get('id')
-            or response.status_code
-        )
+        # Atsakymas gali būti dict arba list
+        try:
+            data = response.json()
+            if isinstance(data, list):
+                # nSoft grąžina list - imame pirmą elementą
+                content = data[0] if data else {}
+            elif isinstance(data, dict):
+                content = data.get('content', data)
+                if isinstance(content, list):
+                    content = content[0] if content else {}
+            else:
+                content = {}
+            receipt_id = str(
+                content.get('receiptId') or
+                content.get('id') or
+                content.get('receiptNumber') or
+                response.status_code
+            )
+        except Exception as e:
+            _logger.warning("nSoft atsakymo apdorojimas: %s", e)
+            receipt_id = str(response.status_code)
+
         self.write({'nsoft_receipt_id': receipt_id, 'nsoft_error': False})
-        _logger.info("nSoft: Kvitas %s -> id=%s", self.name, receipt_id)
+        _logger.info("nSoft: %s -> id=%s", self.name, receipt_id)
