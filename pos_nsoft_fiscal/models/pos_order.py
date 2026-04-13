@@ -35,35 +35,41 @@ class PosOrder(models.Model):
         card_val = (config.nsoft_payment_card or 'card').strip()
         voucher_val = (config.nsoft_payment_voucher or 'voucher').strip()
 
-        if any(k in name for k in ('card', 'kortel', 'bank', 'banko', 'visa', 'master', 'mokejimo')):
+        if any(k in name for k in ('card', 'kortel', 'bank', 'banko', 'visa', 'master')):
             return card_val
         if any(k in name for k in ('voucher', 'kupon', 'dovanu', 'wolt', 'bolt')):
             return voucher_val
         return cash_val
 
     def _get_nsoft_vat_group(self, line, config):
-        """Get nSoft VAT group code for an order line.
-        Returns None if no VAT group configured (DEMO kasėjas gali netureti PVM grupiu).
+        """Get nSoft VAT group for order line.
+        VISADA grazina reiksme - nSoft reikalauja vatGroup kiekviename item.
+        Jei nesukonfiguruota - naudojam 'A' kaip default (21% grupė).
         """
         try:
+            default_vat = (getattr(config, 'nsoft_vat_group_21', None) or 'A').strip() or 'A'
+
             if not line.tax_ids:
-                # Jei produktas be PVM - naudojame 0% grupę jei sukonfigūruota
-                val = getattr(config, 'nsoft_vat_group_0', None)
-                return val.strip() if val and val.strip() else None
+                # Produktas be PVM - naudojame 0% grupę arba default
+                val = (getattr(config, 'nsoft_vat_group_0', None) or '').strip()
+                return val if val else default_vat
+
             rate = int(round(float(line.tax_ids[0].amount)))
             if rate == 21:
-                val = getattr(config, 'nsoft_vat_group_21', None)
+                val = (getattr(config, 'nsoft_vat_group_21', None) or '').strip()
+                return val if val else 'A'
             elif rate == 9:
-                val = getattr(config, 'nsoft_vat_group_9', None)
+                val = (getattr(config, 'nsoft_vat_group_9', None) or '').strip()
+                return val if val else 'E'
             elif rate == 0:
-                val = getattr(config, 'nsoft_vat_group_0', None)
+                val = (getattr(config, 'nsoft_vat_group_0', None) or '').strip()
+                return val if val else 'F'
             else:
-                _logger.warning("nSoft: Nezinomas PVM tarifas %s%%, bandome nsoft_vat_group_21", rate)
-                val = getattr(config, 'nsoft_vat_group_21', None)
-            return val.strip() if val and val.strip() else None
+                _logger.warning("nSoft: Nezinomas PVM tarifas %s%%, naudojamas default", rate)
+                return default_vat
         except Exception as e:
-            _logger.warning("nSoft: PVM grupes klaida: %s", e)
-            return None
+            _logger.warning("nSoft: PVM grupes klaida: %s, naudojamas 'A'", e)
+            return 'A'
 
     def _send_to_nsoft(self):
         self.ensure_one()
@@ -91,18 +97,13 @@ class PosOrder(models.Model):
             vat_group = self._get_nsoft_vat_group(line, config)
             unit_price = round(line_incl / qty, 4) if qty else line_incl
 
-            item = {
+            items_list.append({
                 'description': name[:50],
                 'quantity': qty,
                 'unitPrice': unit_price,
                 'lineAmount': line_incl,
-            }
-            # Pridedame vatGroup TIK jei yra sukonfigūruota
-            # (DEMO kasėjas gali netureti PVM grupių)
-            if vat_group:
-                item['vatGroup'] = vat_group
-
-            items_list.append(item)
+                'vatGroup': vat_group,
+            })
 
         # Fix rounding
         total_incl = round(abs(self.amount_total), 2)
@@ -136,15 +137,15 @@ class PosOrder(models.Model):
             'Content-Type': 'application/json',
         }
 
-        _logger.info("nSoft %s payload: %s", self.name, str(payload)[:400])
+        _logger.info("nSoft %s payload: %s", self.name, str(payload)[:500])
 
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=10)
             if not response.ok:
                 try:
-                    err_msg = response.json().get('message', response.text[:200])
+                    err_msg = response.json().get('message', response.text[:300])
                 except Exception:
-                    err_msg = response.text[:200]
+                    err_msg = response.text[:300]
                 _logger.error("nSoft atmetė %s: %s", self.name, err_msg)
                 raise UserError(f"i.EKA klaida ({response.status_code}): {err_msg}")
 
