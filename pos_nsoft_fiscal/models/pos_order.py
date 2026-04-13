@@ -26,6 +26,17 @@ class PosOrder(models.Model):
             _logger.error("nSoft: Nepavyko isssiusti uzsakymo %s: %s", order_id, e)
         return order_id
 
+    def _get_nsoft_payment_method(self, payment):
+        """Map Odoo payment method name to nSoft method string."""
+        name = (payment.payment_method_id.name or '').lower()
+        config = self.config_id
+        # Check if config has custom mapping fields, otherwise use defaults
+        if any(k in name for k in ('card', 'kortel', 'bank', 'banko', 'visa', 'master')):
+            return getattr(config, 'nsoft_payment_card', None) or 'card'
+        if any(k in name for k in ('voucher', 'kupon', 'dovanu', 'wolt')):
+            return getattr(config, 'nsoft_payment_voucher', None) or 'voucher'
+        return getattr(config, 'nsoft_payment_cash', None) or 'cash'
+
     def _send_to_nsoft(self):
         self.ensure_one()
         config = self.config_id
@@ -48,7 +59,7 @@ class PosOrder(models.Model):
                 unit_incl = round(line_incl / qty, 2) if qty else line_incl
                 name = f"{name} ({qty} x {unit_incl} EUR)"
 
-            # vatGroup from config (A=21%, E=9%, F=0%)
+            # vatGroup from config
             vat_group = 'A'
             if line.tax_ids:
                 rate = int(round(float(line.tax_ids[0].amount)))
@@ -59,9 +70,7 @@ class PosOrder(models.Model):
                 elif rate == 0:
                     vat_group = getattr(config, 'nsoft_vat_group_0', 'F') or 'F'
 
-            # unitPrice * qty must equal lineAmount for nSoft validation
             unit_price = round(line_incl / qty, 4) if qty else line_incl
-
             items_list.append({
                 'description': name[:50],
                 'quantity': qty,
@@ -77,22 +86,15 @@ class PosOrder(models.Model):
         if abs(diff) > 0.001 and items_list:
             items_list[-1]['lineAmount'] = round(items_list[-1]['lineAmount'] + diff, 2)
             items_list[-1]['unitPrice'] = round(
-                items_list[-1]['lineAmount'] / items_list[-1]['quantity'], 4
-            )
+                items_list[-1]['lineAmount'] / items_list[-1]['quantity'], 4)
 
-        # Payment methods: cash/card/voucher (without Fis suffix for DEMO compatibility)
+        # Payments
         payments = []
         for payment in self.payment_ids:
-            method_name = (payment.payment_method_id.name or '').lower()
-            amt = round(abs(payment.amount), 2)
-            if any(k in method_name for k in ('card', 'kortel', 'bank', 'banko', 'visa', 'master')):
-                nsoft_method = 'card'
-            elif any(k in method_name for k in ('voucher', 'kupon', 'dovanu', 'wolt')):
-                nsoft_method = 'voucher'
-            else:
-                nsoft_method = 'cash'
-            payments.append({'method': nsoft_method, 'amount': amt})
-
+            payments.append({
+                'method': self._get_nsoft_payment_method(payment),
+                'amount': round(abs(payment.amount), 2),
+            })
         if not payments:
             payments = [{'method': 'cash', 'amount': total_incl}]
 
