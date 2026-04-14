@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import models
+from odoo import models, api
 import requests
 import logging
 
@@ -15,6 +15,7 @@ class PosSession(models.Model):
         result['search_params']['fields'].append('nsoft_error')
         return result
 
+    @api.model
     def set_opening_control(self, opening_notes, opening_cash):
         """Atidarant sesija - siunciame cash-in i nSoft jei balance > 0."""
         try:
@@ -29,31 +30,27 @@ class PosSession(models.Model):
                 if not session.config_id.nsoft_enabled:
                     continue
                 try:
-                    self._send_nsoft_cash_operation('in', cash_float)
+                    session._send_nsoft_cash_operation('in', cash_float)
                     _logger.info("nSoft: Atidarymo cash-in %.2f EUR (%s)", cash_float, session.name)
                 except Exception as e:
                     _logger.error("nSoft: Atidarymo cash-in klaida: %s", e)
 
         return res
 
-    def action_pos_session_closing_control(self, *args, **kwargs):
+    def close_session_from_ui(self, bank_payment_method_diff_pairs=None):
+        """Odoo 19 naudoja si metoda sesijos uzdarymu is POS UI.
+        Siunciame Z ataskaita PRIES uzdaryma.
+        """
         self._send_nsoft_z_report()
-        res = super().action_pos_session_closing_control(*args, **kwargs)
-        return res
+        return super().close_session_from_ui(bank_payment_method_diff_pairs=bank_payment_method_diff_pairs)
 
-    def try_cash_in_out(self, *args, **kwargs):
-        res = super().try_cash_in_out(*args, **kwargs)
+    def try_cash_in_out(self, _type, amount, reason, extras):
+        res = super().try_cash_in_out(_type, amount, reason, extras)
         try:
-            _type = kwargs.get('_type') or kwargs.get('type')
-            if not _type and len(args) >= 1:
-                _type = args[0]
-            amount = kwargs.get('amount')
-            if amount is None and len(args) >= 2:
-                amount = args[1]
-            amount = float(amount or 0.0)
-            if amount != 0:
-                direction = 'out' if _type == 'out' or amount < 0 else 'in'
-                self._send_nsoft_cash_operation(direction, abs(amount))
+            amount_float = float(amount or 0.0)
+            if amount_float != 0:
+                direction = 'out' if _type == 'out' or amount_float < 0 else 'in'
+                self._send_nsoft_cash_operation(direction, abs(amount_float))
         except Exception as e:
             _logger.error("nSoft: cash_in_out klaida: %s", e)
         return res
@@ -90,7 +87,7 @@ class PosSession(models.Model):
         return lines
 
     def nsoft_opening_cash_in(self, amount):
-        """Isskviečiamas is POS JS (papildomas budas)."""
+        """Papildomas budas iskviesti cash-in is JS."""
         for session in self:
             if not session.config_id.nsoft_enabled:
                 return False
@@ -187,6 +184,7 @@ class PosSession(models.Model):
                 }
 
     def _send_nsoft_z_report(self):
+        """Automatinis Z siuntimas uzdarymo metu."""
         for session in self:
             if not session.config_id.nsoft_enabled:
                 continue
