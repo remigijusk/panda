@@ -21,14 +21,6 @@ class PosSession(models.Model):
         except (TypeError, ValueError):
             cash_float = 0.0
         res = super().set_opening_control(opening_notes, cash_float)
-        try:
-            if cash_float > 0:
-                for session in self:
-                    if session.config_id.nsoft_enabled:
-                        self._send_nsoft_cash_operation('in', cash_float)
-                        _logger.info("nSoft: cash-in %.2f (%s)", cash_float, session.name)
-        except Exception as e:
-            _logger.error("nSoft: Ryto atidarymo klaida: %s", e)
         return res
 
     def action_pos_session_closing_control(self, *args, **kwargs):
@@ -84,6 +76,44 @@ class PosSession(models.Model):
             _logger.warning("nSoft: Klaida apdorojant eilutes: %s", e)
         return lines
 
+    def nsoft_opening_cash_in(self, amount):
+        """Isskviečiamas is POS JS kai atidaroma sesija su pradiniu likučiu.
+        Siunčia cash-in i nSoft ir grazina kvito eilutes spausdinimui per Epson.
+        """
+        for session in self:
+            if not session.config_id.nsoft_enabled:
+                return False
+            api_url, pos_id, token = self._get_nsoft_credentials(session)
+            if not api_url or not token:
+                return False
+            cash_float = round(float(amount or 0.0), 2)
+            if cash_float <= 0:
+                return False
+            url = f"{api_url.rstrip('/')}/cr/{pos_id}/cash"
+            headers = self._get_nsoft_headers(token)
+            payload = {
+                "output": {"format": "native", "lineWidth": 80},
+                "direction": "in",
+                "amount": cash_float,
+            }
+            try:
+                response = requests.post(url, json=payload, headers=headers, timeout=10)
+                _logger.info("nSoft opening cash-in %.2f -> %s", cash_float, response.status_code)
+                if response.ok:
+                    data = response.json()
+                    lines = self._parse_nsoft_lines(data)
+                    return {
+                        'receipt_lines': lines,
+                        'amount': cash_float,
+                        'ok': True,
+                    }
+                else:
+                    _logger.error("nSoft cash-in klaida: %s %s", response.status_code, response.text[:200])
+                    return False
+            except Exception as e:
+                _logger.error("nSoft opening cash-in klaida: %s", e)
+                return False
+
     def print_nsoft_x_report(self):
         for session in self:
             if not session.config_id.nsoft_enabled:
@@ -133,7 +163,7 @@ class PosSession(models.Model):
                     return {
                         'type': 'ir.actions.client',
                         'tag': 'display_notification',
-                        'params': {'title': 'Z Ataskaita', 'message': 'Z Ataskaita issiusta i spausdintuva.', 'type': 'success'},
+                        'params': {'title': 'Z Ataskaita', 'message': 'Z Ataskaita issiusta.', 'type': 'success'},
                         'receipt_lines': lines,
                     }
                 else:
@@ -153,7 +183,7 @@ class PosSession(models.Model):
                 }
 
     def _send_nsoft_z_report(self):
-        """Automatinis Z siuntimas uždarymo metu."""
+        """Automatinis Z siuntimas uzdarymo metu."""
         for session in self:
             if not session.config_id.nsoft_enabled:
                 continue
