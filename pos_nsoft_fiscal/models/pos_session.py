@@ -16,28 +16,22 @@ class PosSession(models.Model):
         return result
 
     def set_opening_control(self, opening_notes, opening_cash):
-        """Odoo 19: opening_control -> opened. Siunciam cash-in i nSoft jei balance > 0."""
         try:
             cash_float = float(opening_cash or 0.0)
         except (TypeError, ValueError):
             cash_float = 0.0
-
         res = super().set_opening_control(opening_notes, cash_float)
-
         try:
             if cash_float > 0:
                 for session in self:
                     if session.config_id.nsoft_enabled:
                         self._send_nsoft_cash_operation('in', cash_float)
-                        _logger.info("nSoft: Ryto atidarymas cash-in %.2f (%s)", cash_float, session.name)
+                        _logger.info("nSoft: cash-in %.2f (%s)", cash_float, session.name)
         except Exception as e:
             _logger.error("nSoft: Ryto atidarymo klaida: %s", e)
-
         return res
 
     def action_pos_session_closing_control(self, *args, **kwargs):
-        """Uzdarant sesija – pirma siunciame Z ataskaita i nSoft, tada uzdarome."""
-        # Siunčiame Z ataskaitą PRIEŠ uždarant – kad gaukume atsakymą
         self._send_nsoft_z_report()
         res = super().action_pos_session_closing_control(*args, **kwargs)
         return res
@@ -56,7 +50,7 @@ class PosSession(models.Model):
                 direction = 'out' if _type == 'out' or amount < 0 else 'in'
                 self._send_nsoft_cash_operation(direction, abs(amount))
         except Exception as e:
-            _logger.error("nSoft: Klaida traukiant cash_in_out: %s", e)
+            _logger.error("nSoft: cash_in_out klaida: %s", e)
         return res
 
     def _get_nsoft_credentials(self, session):
@@ -74,7 +68,6 @@ class PosSession(models.Model):
         }
 
     def _parse_nsoft_lines(self, data):
-        """Ištraukia teksto eilutes iš nSoft atsakymo."""
         lines = []
         try:
             content = data if isinstance(data, list) else (data.get('content') or [])
@@ -109,30 +102,22 @@ class PosSession(models.Model):
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
-                    'params': {
-                        'title': 'X Ataskaita',
-                        'message': 'X Ataskaita išsiųsta į spausdintuvą.',
-                        'type': 'success',
-                    },
+                    'params': {'title': 'X Ataskaita', 'message': 'X Ataskaita issiusta.', 'type': 'success'},
                     'receipt_lines': lines,
                 }
             except Exception as e:
-                _logger.error("nSoft X-Ataskaitos klaida: %s", e)
+                _logger.error("nSoft X klaida: %s", e)
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
-                    'params': {
-                        'title': 'Klaida',
-                        'message': f'X Ataskaitos klaida: {e}',
-                        'type': 'danger',
-                    },
+                    'params': {'title': 'Klaida', 'message': f'X klaida: {e}', 'type': 'danger'},
                 }
 
-    def _send_nsoft_z_report(self):
-        """Siunčia Z ataskaitą į nSoft ir loguoja atsakymą."""
+    def print_nsoft_z_report(self):
+        """Z Ataskaita - isskviečiama is hamburger meniu."""
         for session in self:
             if not session.config_id.nsoft_enabled:
-                continue
+                return False
             api_url, pos_id, token = self._get_nsoft_credentials(session)
             if not api_url or not token:
                 continue
@@ -144,15 +129,43 @@ class PosSession(models.Model):
                 if response.ok:
                     data = response.json()
                     lines = self._parse_nsoft_lines(data)
-                    _logger.info(
-                        "nSoft Z ataskaita %s: OK, %d eilučių",
-                        session.name, len(lines)
-                    )
+                    _logger.info("nSoft Z %s: OK, %d eilučių", session.name, len(lines))
+                    return {
+                        'type': 'ir.actions.client',
+                        'tag': 'display_notification',
+                        'params': {'title': 'Z Ataskaita', 'message': 'Z Ataskaita issiusta i spausdintuva.', 'type': 'success'},
+                        'receipt_lines': lines,
+                    }
                 else:
-                    _logger.error(
-                        "nSoft Z ataskaita %s: Klaida %s – %s",
-                        session.name, response.status_code, response.text[:200]
-                    )
+                    err = response.text[:200]
+                    _logger.error("nSoft Z klaida %s: %s", session.name, err)
+                    return {
+                        'type': 'ir.actions.client',
+                        'tag': 'display_notification',
+                        'params': {'title': 'Z klaida', 'message': f'Klaida {response.status_code}: {err}', 'type': 'danger'},
+                    }
+            except Exception as e:
+                _logger.error("nSoft Z-Ataskaitos klaida: %s", e)
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {'title': 'Z klaida', 'message': f'Klaida: {e}', 'type': 'danger'},
+                }
+
+    def _send_nsoft_z_report(self):
+        """Automatinis Z siuntimas uždarymo metu."""
+        for session in self:
+            if not session.config_id.nsoft_enabled:
+                continue
+            api_url, pos_id, token = self._get_nsoft_credentials(session)
+            if not api_url or not token:
+                continue
+            url = f"{api_url.rstrip('/')}/cr/{pos_id}/fis-day"
+            headers = self._get_nsoft_headers(token)
+            payload = {"output": {"format": "native", "lineWidth": 80}}
+            try:
+                response = requests.post(url, json=payload, headers=headers, timeout=15)
+                _logger.info("nSoft Z ataskaita %s -> %s", session.name, response.status_code)
             except Exception as e:
                 _logger.error("nSoft Z-Ataskaitos klaida: %s", e)
 
