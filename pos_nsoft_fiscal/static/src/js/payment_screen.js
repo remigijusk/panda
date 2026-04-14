@@ -1,9 +1,13 @@
 /** @odoo-module */
 import { patch } from "@web/core/utils/patch";
 import { Chrome } from "@point_of_sale/app/pos_app";
+import { OpeningControlPopup } from "@point_of_sale/app/store/opening_control_popup/opening_control_popup";
 import { useService } from "@web/core/utils/hooks";
 import { onMounted, onWillUnmount } from "@odoo/owl";
 
+// ──────────────────────────────────────────────────────────────────────────
+// Patch Chrome – hamburger menu mygtukams ir atidarymo cash-in
+// ──────────────────────────────────────────────────────────────────────────
 patch(Chrome.prototype, {
     setup() {
         super.setup(...arguments);
@@ -28,82 +32,58 @@ patch(Chrome.prototype, {
         const menu = document.querySelector('.pos-burger-menu-items');
         if (!menu) return;
 
-        // X Ataskaita mygtukas
         if (!menu.querySelector('.nsoft-x-btn')) {
             const btn = document.createElement('span');
             btn.className = 'o-dropdown-item dropdown-item o-navigable nsoft-x-btn';
             btn.setAttribute('role', 'menuitem');
             btn.style.cursor = 'pointer';
             btn.textContent = '\u{1F4CA} X Ataskaita (i.EKA)';
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.printNsoftXReport();
-            });
+            btn.addEventListener('click', (e) => { e.stopPropagation(); this.printNsoftXReport(); });
             menu.appendChild(btn);
         }
 
-        // Z Ataskaita mygtukas
         if (!menu.querySelector('.nsoft-z-btn')) {
             const btn = document.createElement('span');
             btn.className = 'o-dropdown-item dropdown-item o-navigable nsoft-z-btn';
             btn.setAttribute('role', 'menuitem');
             btn.style.cursor = 'pointer';
             btn.textContent = '\u{1F4C4} Z Ataskaita (i.EKA)';
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.printNsoftZReport();
-            });
+            btn.addEventListener('click', (e) => { e.stopPropagation(); this.printNsoftZReport(); });
             menu.appendChild(btn);
         }
     },
 
     async printNsoftXReport() {
         try {
-            const sessionId = this.pos.session.id;
-            const result = await this.orm.call(
-                "pos.session",
-                "print_nsoft_x_report",
-                [[sessionId]]
-            );
+            const result = await this.orm.call("pos.session", "print_nsoft_x_report", [[this.pos.session.id]]);
             if (result) {
                 const lines = result.receipt_lines || [];
                 if (lines.length > 0 && this.pos.config.epson_printer_ip) {
                     this._printReportToEpson(lines);
                 }
-                this.notification.add(
-                    result.params?.message || "X Ataskaita išsiųsta!",
-                    { type: result.params?.type || "success", title: result.params?.title || "Pavyko!" }
-                );
+                this.notification.add(result.params?.message || "X Ataskaita issiusta!", {
+                    type: result.params?.type || "success", title: result.params?.title || "Pavyko!"
+                });
             }
         } catch (e) {
-            this.notification.add("X Ataskaitos klaida: " + (e.message || e), {
-                type: "danger", title: "Klaida",
-            });
+            this.notification.add("X klaida: " + (e.message || e), { type: "danger", title: "Klaida" });
         }
     },
 
     async printNsoftZReport() {
         try {
-            const sessionId = this.pos.session.id;
-            const result = await this.orm.call(
-                "pos.session",
-                "print_nsoft_z_report",
-                [[sessionId]]
-            );
+            const result = await this.orm.call("pos.session", "print_nsoft_z_report", [[this.pos.session.id]]);
             if (result) {
                 const lines = result.receipt_lines || [];
                 if (lines.length > 0 && this.pos.config.epson_printer_ip) {
                     this._printReportToEpson(lines);
                 }
-                this.notification.add(
-                    result.params?.message || "Z Ataskaita išsiųsta!",
-                    { type: result.params?.type || "success", title: result.params?.title || "Pavyko!" }
-                );
+                this.notification.add(result.params?.message || "Z Ataskaita issiusta!", {
+                    type: result.params?.type || "success", title: result.params?.title || "Pavyko!"
+                });
             }
         } catch (e) {
-            this.notification.add("Z Ataskaitos klaida: " + (e.message || e), {
-                type: "danger", title: "Klaida",
-            });
+            this.notification.add("Z klaida: " + (e.message || e), { type: "danger", title: "Klaida" });
         }
     },
 
@@ -112,29 +92,63 @@ patch(Chrome.prototype, {
             const ip = this.pos.config.epson_printer_ip;
             if (!ip) return;
             const url = `http://${ip}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
-            const textContent = lines.join('\n');
-            const body = `<?xml version="1.0" encoding="utf-8"?>
-<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
-<s:Body>
-<epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-<text>${textContent.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}\n</text>
-<feed unit="5"/>
-<cut type="feed"/>
-</epos-print>
-</s:Body>
-</s:Envelope>`;
-            fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': '""' },
-                body: body,
-            }).catch(e => console.error('Epson print error:', e));
-        } catch(e) {
-            console.error('_printReportToEpson error:', e);
-        }
+            const text = lines.join('\n').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            const body = `<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print"><text>${text}\n</text><feed unit="5"/><cut type="feed"/></epos-print></s:Body></s:Envelope>`;
+            fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': '""' }, body }).catch(e => console.error('Epson:', e));
+        } catch(e) { console.error('_printReportToEpson:', e); }
+    },
+});
+
+// ──────────────────────────────────────────────────────────────────────────
+// Patch OpeningControlPopup – cash-in į nSoft kai atidaroma sesija
+// ──────────────────────────────────────────────────────────────────────────
+patch(OpeningControlPopup.prototype, {
+    setup() {
+        super.setup(...arguments);
+        this.orm = useService("orm");
+        this.notification = useService("notification");
     },
 
-    // Deprecated - keep for backwards compat
-    _printXReportToEpson(lines) {
-        this._printReportToEpson(lines);
+    async confirm() {
+        // Pirma paleidžiame originalų confirm (atidaro sesiją Odoo pusėje)
+        const result = await super.confirm(...arguments);
+
+        try {
+            if (!this.pos.config.nsoft_enabled) return result;
+
+            // Gauname atidarymo sumą
+            const openingCash = parseFloat(this.openingCash) || 0;
+            if (openingCash <= 0) return result;
+
+            const sessionId = this.pos.session.id;
+
+            // Siunčiame cash-in į nSoft ir gauname kvitą
+            const cashResult = await this.orm.call(
+                "pos.session",
+                "nsoft_opening_cash_in",
+                [[sessionId], openingCash]
+            );
+
+            if (cashResult) {
+                // Spausdiname kvitą per Epson jei grąžino eilutes
+                const lines = cashResult.receipt_lines || [];
+                if (lines.length > 0 && this.pos.config.epson_printer_ip) {
+                    const ip = this.pos.config.epson_printer_ip;
+                    const url = `http://${ip}/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000`;
+                    const text = lines.join('\n').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                    const body = `<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print"><text>${text}\n</text><feed unit="5"/><cut type="feed"/></epos-print></s:Body></s:Envelope>`;
+                    fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': '""' }, body }).catch(e => console.error('Epson cash-in:', e));
+                }
+                this.notification.add(
+                    `Pinigų įdėjimas ${openingCash.toFixed(2)} € išsiųstas į i.EKA`,
+                    { type: "success", title: "i.EKA cash-in" }
+                );
+            }
+        } catch (e) {
+            console.error("nSoft cash-in klaida:", e);
+            // Nerodomos klaidos vartotojui – sesija atidaryta normaliai
+        }
+
+        return result;
     },
 });
