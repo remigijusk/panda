@@ -10,53 +10,75 @@
           <field name="pos_nsoft_enabled"/>
           <div class="content-group" invisible="not pos_nsoft_enabled">
 
-            <div class="row mt16">
+            <!-- Connection  -->
+            <div class="row mt16"><span class="col-lg-12 o_form_label"><strong>Ryšys</strong></span></div>
+            <div class="row mt8">
               <label for="pos_nsoft_api_url" class="col-lg-3 o_light_label" string="API URL"/>
-              <field name="pos_nsoft_api_url"/>
+              <field name="pos_nsoft_api_url" placeholder="https://nvf.app3.nsoft.eu:30032"/>
             </div>
-            <div class="row mt16">
+            <div class="row mt8">
               <label for="pos_nsoft_pos_id" class="col-lg-3 o_light_label" string="POS ID"/>
-              <field name="pos_nsoft_pos_id"/>
+              <field name="pos_nsoft_pos_id" placeholder="CR-000019280"/>
             </div>
-            <div class="row mt16">
-              <label for="pos_nsoft_token" class="col-lg-3 o_light_label" string="Token (Slaptažodis)"/>
-              <field name="pos_nsoft_token"/>
+            <div class="row mt8">
+              <label for="pos_nsoft_token" class="col-lg-3 o_light_label" string="Bearer Token"/>
+              <field name="pos_nsoft_token" password="True"/>
+            </div>
+            <div class="row mt8">
+              <label for="pos_nsoft_mod" class="col-lg-3 o_light_label" string="Režimas"/>
+              <field name="pos_nsoft_mod"/>
             </div>
 
-            <div class="row mt16">
-              <span class="col-lg-12 o_form_label"><strong>Mokėjimo metodai</strong></span>
+            <!-- Admin / cashier  -->
+            <div class="row mt16"><span class="col-lg-12 o_form_label"><strong>Kasos nustatymai</strong></span></div>
+            <div class="row mt8">
+              <label for="pos_nsoft_cashier" class="col-lg-3 o_light_label" string="Kasininkas"/>
+              <field name="pos_nsoft_cashier"/>
             </div>
             <div class="row mt8">
-              <label for="pos_nsoft_payment_cash" class="col-lg-3 o_light_label" string="Grynųjų metodas"/>
-              <field name="pos_nsoft_payment_cash" placeholder="cash"/>
+              <label for="pos_nsoft_round_cash" class="col-lg-3 o_light_label" string="Apvalinti 5 ct"/>
+              <field name="pos_nsoft_round_cash"/>
             </div>
             <div class="row mt8">
-              <label for="pos_nsoft_payment_card" class="col-lg-3 o_light_label" string="Kortelės metodas"/>
-              <field name="pos_nsoft_payment_card" placeholder="card"/>
+              <label for="pos_nsoft_retain_cash" class="col-lg-3 o_light_label" string="Išlaikyti grynuosius po Z"/>
+              <field name="pos_nsoft_retain_cash"/>
             </div>
             <div class="row mt8">
-              <label for="pos_nsoft_payment_voucher" class="col-lg-3 o_light_label" string="Voucher metodas"/>
-              <field name="pos_nsoft_payment_voucher" placeholder="voucher"/>
+              <label for="pos_nsoft_output_format" class="col-lg-3 o_light_label" string="Formatas"/>
+              <field name="pos_nsoft_output_format"/>
+            </div>
+            <div class="row mt8">
+              <label for="pos_nsoft_line_width" class="col-lg-3 o_light_label" string="Eilutės plotis"/>
+              <field name="pos_nsoft_line_width"/>
             </div>
 
-            <div class="row mt16">
-              <span class="col-lg-12 o_form_label"><strong>PVM grupės</strong></span>
-            </div>
-            <div class="row mt8">
-              <label for="pos_nsoft_vat_group_21" class="col-lg-3 o_light_label" string="PVM grupė 21%"/>
-              <field name="pos_nsoft_vat_group_21" placeholder="A"/>
-            </div>
-            <div class="row mt8">
-              <label for="pos_nsoft_vat_group_9" class="col-lg-3 o_light_label" string="PVM grupė 9%"/>
-              <field name="pos_nsoft_vat_group_9" placeholder="E"/>
-            </div>
-            <div class="row mt8">
-              <label for="pos_nsoft_vat_group_0" class="col-lg-3 o_light_label" string="PVM grupė 0%"/>
-              <field name="pos_nsoft_vat_group_0" placeholder="F"/>
-            </div>
+            <!-- Payments  -->
+            <div class="row mt16"><span class="col-lg-12 o_form_label"><strong>Mokėjimo metodai (API enum)</strong></span></div>
+            <div class="row mt8"><label for="pos_nsoft_payment_cash" class="col-lg-3 o_light_label" string="Grynieji"/><field name="pos_nsoft_payment_cash" placeholder="cash"/></div>
+            <div class="row mt8"><label for="pos_nsoft_payment_card" class="col-lg-3 o_light_label" string="Banko kortelė"/><field name="pos_nsoft_payment_card" placeholder="paymentCard"/></div>
+            <div class="row mt8"><label for="pos_nsoft_payment_other_card" class="col-lg-3 o_light_label" string="Kita kortelė"/><field name="pos_nsoft_payment_other_card" placeholder="otherCard"/></div>
+            <div class="row mt8"><label for="pos_nsoft_payment_voucher" class="col-lg-3 o_light_label" string="Kuponas"/><field name="pos_nsoft_payment_voucher" placeholder="coupon"/></div>
+            <div class="row mt8"><label for="pos_nsoft_payment_transfer" class="col-lg-3 o_light_label" string="Pavedimas"/><field name="pos_nsoft_payment_transfer" placeholder="transfer"/></div>
+            <div class="row mt8"><label for="pos_nsoft_payment_other" class="col-lg-3 o_light_label" string="Kita"/><field name="pos_nsoft_payment_other" placeholder="other"/></div>
 
+            <!-- VAT groups  -->
+            <div class="row mt16"><span class="col-lg-12 o_form_label"><strong>PVM grupės</strong></span></div>
+            <div class="row mt8"><label for="pos_nsoft_vat_group_21" class="col-lg-3 o_light_label" string="21%"/><field name="pos_nsoft_vat_group_21" placeholder="A"/></div>
+            <div class="row mt8"><label for="pos_nsoft_vat_group_9" class="col-lg-3 o_light_label" string="9%"/><field name="pos_nsoft_vat_group_9" placeholder="E"/></div>
+            <div class="row mt8"><label for="pos_nsoft_vat_group_5" class="col-lg-3 o_light_label" string="5%"/><field name="pos_nsoft_vat_group_5" placeholder="C"/></div>
+            <div class="row mt8"><label for="pos_nsoft_vat_group_0" class="col-lg-3 o_light_label" string="0% / neapmokest."/><field name="pos_nsoft_vat_group_0" placeholder="F"/></div>
+            <div class="row mt8"><label for="pos_nsoft_vat_group_alcohol" class="col-lg-3 o_light_label" string="Alkoholis"/><field name="pos_nsoft_vat_group_alcohol" placeholder="B"/></div>
+            <div class="row mt8"><label for="pos_nsoft_vat_group_deposit" class="col-lg-3 o_light_label" string="Tara / depozitas"/><field name="pos_nsoft_vat_group_deposit" placeholder="T"/></div>
+            <div class="row mt8"><label for="pos_nsoft_vat_group_other" class="col-lg-3 o_light_label" string="Ne-PVM"/><field name="pos_nsoft_vat_group_other" placeholder="N"/></div>
+
+            <!-- Actions  -->
             <div class="row mt16">
-              <button name="action_test_nsoft_connection" type="object" string="Testuoti Ryšį" class="btn btn-primary" icon="fa-wifi"/>
+              <button name="action_test_nsoft_connection" type="object" string="Testuoti ryšį" class="btn btn-primary" icon="fa-wifi"/>
+              <button name="action_nsoft_get_info" type="object" string="Kasos būklė" class="btn btn-secondary" icon="fa-info-circle"/>
+              <button name="action_nsoft_list_registers" type="object" string="Aktyvios kasos" class="btn btn-secondary" icon="fa-list"/>
+              <button name="action_nsoft_push_vat" type="object" string="Siųsti PVM lentelę" class="btn btn-secondary" icon="fa-upload"/>
+              <button name="action_nsoft_patch_settings" type="object" string="Atnaujinti kasos nust." class="btn btn-secondary" icon="fa-cog"/>
+              <button name="action_nsoft_force_sync" type="object" string="Priverstinė sinchr." class="btn btn-secondary" icon="fa-refresh"/>
             </div>
 
           </div>

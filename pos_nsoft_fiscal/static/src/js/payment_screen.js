@@ -48,35 +48,68 @@ patch(Chrome.prototype, {
         }
     },
 
-    async printNsoftXReport() {
+    async _nsoftPrintText(text) {
+        if (!text) return false;
+        const escapeHtml = (s) => s
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        const html = `<div class="pos-receipt">
+            <pre style="font-family:'Courier New',monospace;font-size:12px;white-space:pre;margin:0;">${escapeHtml(text)}</pre>
+        </div>`;
         try {
-            const result = await this.orm.call(
-                "pos.session", "print_nsoft_x_report", [[this.pos.session.id]]
-            );
-            if (result) {
-                this.notification.add(
-                    result.params?.message || "X Ataskaita issiusta!",
-                    { type: result.params?.type || "success", title: result.params?.title || "Pavyko!" }
-                );
+            const printer = this.pos?.printer || this.pos?.hardwareProxy?.printer;
+            if (printer && typeof printer.printReceipt === "function") {
+                const res = await printer.printReceipt(html);
+                if (res && res.successful === false && res.canRetry) {
+                    // fall through to browser print
+                } else {
+                    return true;
+                }
             }
         } catch (e) {
-            this.notification.add("X klaida: " + (e.message || e), { type: "danger", title: "Klaida" });
+            // ignore, fallback below
+        }
+        // Fallback: browser print dialog
+        const w = window.open("", "_blank", "width=400,height=600");
+        if (w) {
+            w.document.write(`<html><head><title>i.EKA</title></head><body onload="window.print();">${html}</body></html>`);
+            w.document.close();
+            return true;
+        }
+        return false;
+    },
+
+    async _nsoftHandleReport(methodName, defaultTitle) {
+        try {
+            const result = await this.orm.call(
+                "pos.session", methodName, [[this.pos.session.id]]
+            );
+            if (result && result.success === false) {
+                this.notification.add(result.message || "Klaida",
+                    { type: "danger", title: result.title || "i.EKA klaida" });
+                return;
+            }
+            const text = result && result.receipt_text;
+            if (text) {
+                await this._nsoftPrintText(text);
+                this.notification.add(result.message || "Atspausdinta.",
+                    { type: "success", title: result.title || defaultTitle });
+            } else {
+                this.notification.add(
+                    (result && result.message) || "Ataskaita suformuota, bet spausdinimo tekstas negautas.",
+                    { type: "warning", title: (result && result.title) || defaultTitle });
+            }
+        } catch (e) {
+            this.notification.add((e.message || e).toString(),
+                { type: "danger", title: "Klaida" });
         }
     },
 
+    async printNsoftXReport() {
+        await this._nsoftHandleReport("print_nsoft_x_report", "X Ataskaita");
+    },
+
     async printNsoftZReport() {
-        try {
-            const result = await this.orm.call(
-                "pos.session", "print_nsoft_z_report", [[this.pos.session.id]]
-            );
-            if (result) {
-                this.notification.add(
-                    result.params?.message || "Z Ataskaita issiusta!",
-                    { type: result.params?.type || "success", title: result.params?.title || "Pavyko!" }
-                );
-            }
-        } catch (e) {
-            this.notification.add("Z klaida: " + (e.message || e), { type: "danger", title: "Klaida" });
-        }
+        await this._nsoftHandleReport("print_nsoft_z_report", "Z Ataskaita");
     },
 });
