@@ -111,12 +111,17 @@ class PosSession(models.Model):
             data = self._send_nsoft_x_report()
         except NSoftAPIError as exc:
             return {'success': False, 'title': 'i.EKA klaida', 'message': str(exc)}
+        import json as _json
+        _logger.info("nSoft X-report raw response: %s", _json.dumps(data, ensure_ascii=False)[:4000])
         text = extract_receipt_text(data)
+        if not text:
+            text = _json.dumps(data, ensure_ascii=False, indent=2)
         return {
             'success': True,
             'title': 'X Ataskaita',
             'message': 'X ataskaita suformuota.',
             'receipt_text': text,
+            'raw': data,
         }
 
     def print_nsoft_z_report(self):
@@ -127,12 +132,17 @@ class PosSession(models.Model):
             data = self._send_nsoft_z_report()
         except NSoftAPIError as exc:
             return {'success': False, 'title': 'i.EKA klaida', 'message': str(exc)}
+        import json as _json
+        _logger.info("nSoft Z-report raw response: %s", _json.dumps(data, ensure_ascii=False)[:4000])
         text = extract_receipt_text(data)
+        if not text:
+            text = _json.dumps(data, ensure_ascii=False, indent=2)
         return {
             'success': True,
             'title': 'Z Ataskaita',
             'message': 'Fiskalinė diena uždaryta.',
             'receipt_text': text,
+            'raw': data,
         }
 
     def action_nsoft_min_day(self):

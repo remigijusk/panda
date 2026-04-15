@@ -84,6 +84,7 @@ patch(Chrome.prototype, {
             const result = await this.orm.call(
                 "pos.session", methodName, [[this.pos.session.id]]
             );
+            console.log("[nSoft] " + methodName + " response:", result);
             if (result && result.success === false) {
                 this.notification.add(result.message || "Klaida",
                     { type: "danger", title: result.title || "i.EKA klaida" });

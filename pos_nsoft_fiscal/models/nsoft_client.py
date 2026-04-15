@@ -260,28 +260,54 @@ def extract_document_id(data):
 def extract_receipt_text(data):
     """Extract the printable report / receipt text from a NSoft response.
 
-    NSoft returns the formatted print-ready text inside the content[0]
-    document. The field name varies: 'data', 'print', 'text', 'output'.
+    NSoft may return the formatted text in many shapes. We search recursively
+    for the first string that looks like a multi-line printable document.
     """
     if not data:
         return ''
-    content = data.get('content', data) if isinstance(data, dict) else data
-    if isinstance(content, list):
-        content = content[0] if content else {}
-    if not isinstance(content, dict):
-        return str(content) if content else ''
-    # Try common locations
-    for key in ('data', 'print', 'text', 'output', 'body', 'receipt'):
-        val = content.get(key)
-        if isinstance(val, str) and val.strip():
-            return val
-    doc = content.get('document') or {}
-    if isinstance(doc, dict):
-        for key in ('data', 'print', 'text', 'output', 'body', 'receipt'):
-            val = doc.get(key)
-            if isinstance(val, str) and val.strip():
-                return val
-    return ''
+
+    KNOWN_KEYS = (
+        'data', 'print', 'text', 'output', 'body', 'receipt',
+        'content', 'native', 'escpos', 'html', 'formatted',
+        'printout', 'document', 'value', 'result',
+    )
+
+    def _score(val):
+        # Heuristic: long strings with newlines are the receipt print.
+        if not isinstance(val, str):
+            return 0
+        if '\n' in val and len(val) > 30:
+            return 1000 + len(val)
+        if len(val) > 60:
+            return len(val)
+        return 0
+
+    best = ('', 0)
+
+    def _walk(node, depth=0):
+        nonlocal best
+        if depth > 8:
+            return
+        if isinstance(node, str):
+            s = _score(node)
+            if s > best[1]:
+                best = (node, s)
+            return
+        if isinstance(node, list):
+            for item in node:
+                _walk(item, depth + 1)
+            return
+        if isinstance(node, dict):
+            # Prefer known keys first
+            for k in KNOWN_KEYS:
+                if k in node:
+                    _walk(node[k], depth + 1)
+            for k, v in node.items():
+                if k not in KNOWN_KEYS:
+                    _walk(v, depth + 1)
+
+    _walk(data)
+    return best[0]
 
 
 def extract_default_format(config):
