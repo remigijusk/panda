@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_pos_nsoft_op_wizard_user,pos.nsoft.op.wizard user,model_pos_nsoft_op_wizard,point_of_sale.group_pos_user,1,1,1,1
+access_pos_nsoft_op_wizard_manager,pos.nsoft.op.wizard manager,model_pos_nsoft_op_wizard,point_of_sale.group_pos_manager,1,1,1,1
+access_pos_nsoft_history_wizard_user,pos.nsoft.history.wizard user,model_pos_nsoft_history_wizard,point_of_sale.group_pos_user,1,1,1,1
+access_pos_nsoft_history_wizard_manager,pos.nsoft.history.wizard manager,model_pos_nsoft_history_wizard,point_of_sale.group_pos_manager,1,1,1,1
+access_pos_nsoft_vat_push_manager,pos.nsoft.vat.push manager,model_pos_nsoft_vat_push,point_of_sale.group_pos_manager,1,1,1,1
